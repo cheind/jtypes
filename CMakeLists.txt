@@ -13,29 +13,30 @@ endif()
 # Vendor Libraries
 
 #add_subdirectory(vendor/mongoose)
-#add_subdirectory(vendor/jsoncpp)
+#add_subdirectory(vendor/variant)
 
 # Library
 
 set(LIB_INCLUDE_DIRS
 	inc
+	vendor/variant
 )
 
 set(LIB_SOURCES
-    inc/jtypes/jtypes.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/jtypes/jtypes.h
 )
 
 set(LIB_LINK_TARGETS)
 
 add_library(jtypes INTERFACE)
 target_include_directories(jtypes INTERFACE ${LIB_INCLUDE_DIRS})
-target_sources(jtypes INTERFACE {LIB_SOURCES})
+target_sources(jtypes INTERFACE ${LIB_SOURCES})
 
 # Tests
 
 set(TEST_SOURCES
     tests/catch.hpp
-    tests/test_jtypes.h
+    tests/test_jtypes.cpp
 )
 
 set(TEST_LINK_TARGETS
