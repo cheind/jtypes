@@ -22,33 +22,51 @@ namespace jtypes {
     
     class object;
     class array;
-    
-    
-    typedef variant<int, std::string, object, array> my_variant;
+    class value;
     
     class object {
     public:
-        std::unordered_map<std::string, my_variant> m;
+        std::unordered_map<std::string, value> m;
     };
     
     class array {
     public:
-        std::vector<my_variant> a;
+        std::vector<value> a;
         
         array() = default;
         
         template<class T>
         array(const std::initializer_list<T> &t) {
             for (auto && v : t) {
-                a.push_back(my_variant(v));
+                a.push_back(value(v));
             }
         }
         
-        array(const std::initializer_list<my_variant> &t) {
+        array(const std::initializer_list<value> &t) {
             a = t;
         }
         
     };
+    
+    
+    class value {
+    public:
+        typedef variant<int, std::string, object, array> var;
+        var v;
+        
+        value() = default;
+        
+        value(var && v_)
+        :v(std::move(v_)) {}
+    };
+    
+
+    
+    
+    
+
+    
+
     
 }
 

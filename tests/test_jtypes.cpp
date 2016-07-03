@@ -15,12 +15,12 @@ of MIT license. See the LICENSE file for details.
 
 TEST_CASE("jtypes-should-work")
 {
-    jtypes::my_variant var;
+    jtypes::value var;
     
-    var = jtypes::object();
-    var.get<jtypes::object>().m["x"] = 3;
-    var.get<jtypes::object>().m["a"] = jtypes::array({1,2,3});
+    var.v = jtypes::object();
+    var.v.get<jtypes::object>().m["x"] = jtypes::value(3);
+    var.v.get<jtypes::object>().m["a"] = jtypes::value(jtypes::array({1,2,3}));
     
-    REQUIRE(var.get<jtypes::object>().m["a"].which() == 3);
+    REQUIRE(var.v.get<jtypes::object>().m["a"].v.which() == 3);
     
 }
