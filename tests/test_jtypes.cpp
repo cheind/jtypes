@@ -174,6 +174,28 @@ TEST_CASE("jtypes should handle coercion to integral types")
     
     REQUIRE(jtypes::var(5).as<long>() == 5);
     REQUIRE(jtypes::var(5.5).as<char>() == (char)5);
+    
+    REQUIRE(jtypes::var("5").as<long>() == 5);
+    REQUIRE(jtypes::var("5.5").as<char>() == (char)5);
+}
+
+TEST_CASE("jtypes should handle coercion to floating point types")
+{
+    
+    REQUIRE_THROWS_AS(jtypes::var().as<float>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var({1,2,3}).as<double>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var({{"a",1}}).as<float>(), jtypes::bad_access);
+    
+    REQUIRE(jtypes::var(true).as<float>() == 1.f);
+    REQUIRE(jtypes::var(false).as<float>() == 0.f);
+    
+    REQUIRE(jtypes::var(5).as<float>() == 5.f);
+    REQUIRE(jtypes::var(5u).as<float>() == 5.f);
+    REQUIRE(jtypes::var(5.5).as<float>() == 5.5f);
+    REQUIRE(jtypes::var(5).as<double>() == 5.0);
+    
+    REQUIRE(jtypes::var("5").as<double>() == 5.0);
+    REQUIRE(jtypes::var("-5.5").as<double>() == -5.5);
 }
 
 
