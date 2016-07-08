@@ -192,7 +192,38 @@ namespace jtypes {
         template <>          struct enum_of<array_t> : public std::integral_constant<type, type::array> {};
         template <>          struct enum_of<object_t> : public std::integral_constant<type, type::object> {};
         template <>          struct enum_of<number_t> : public std::integral_constant<type, type::number> {};
-
+        
+        template<typename Range, typename Transform>
+        inline std::string
+        join(const Range &input, const std::string& separator, Transform trans)
+        {
+            auto it = std::begin(input);
+            auto it_end = std::end(input);
+            
+            std::ostringstream result;
+            
+            if(it != it_end)
+            {
+                result << trans(*it);
+                ++it;
+            }
+            
+            for(;it != it_end; ++it)
+            {
+                result << separator << trans(*it);
+            }
+            
+            return result.str();
+        }
+        
+        template< typename Range>
+        inline std::string
+        join(const Range &input, const std::string& separator)
+        {
+            typedef decltype(std::begin(input)) range_value;
+            return join(input, separator, [](const range_value &v) {return v;});
+        }
+        
         template<typename ToType, typename EnableIfType = void>
         struct coerce_number {
         };
@@ -203,6 +234,14 @@ namespace jtypes {
 
             template<class T>
             void operator()(T v) { value = (v != T(0)); }
+        };
+        
+        template<>
+        struct coerce_number<std::string, void> {
+            std::string value;
+            
+            template<class T>
+            void operator()(T v) { value = std::to_string(v); }
         };
 
         template<typename ToType>
@@ -231,6 +270,31 @@ namespace jtypes {
             void operator()(const object_t &v) { value = true; }
             void operator()(const number_t &v) {
                 coerce_number<bool> cn;
+                apply_visitor(cn, v);
+                value = cn.value;
+            }
+        };
+        
+        template<>
+        struct coerce<std::string, void> {
+            std::string value;
+            
+            void operator()(const undefined_t &v) { value = "undefined"; }
+            void operator()(const null_t &v) { value = "null"; }
+            void operator()(const bool_t &v) { value = v ? "true" : "false"; }
+            void operator()(const string_t &v) { value = v; }
+            void operator()(const function_t &v) { value = "function"; }
+            void operator()(const array_t &v) {
+                std::ostringstream oss;
+                oss << '[';
+                // oss << join(v, ',', [](const var &vv) {});
+                oss << ']';
+                value = true;
+            }
+            void operator()(const object_t &v) { value = ""; }
+            
+            void operator()(const number_t &v) {
+                coerce_number<std::string> cn;
                 apply_visitor(cn, v);
                 value = cn.value;
             }
@@ -403,6 +467,7 @@ namespace jtypes {
         }
 
         // Callable interface
+        
         template<typename ReturnType, typename... Args>
         ReturnType invoke(Args&&... args) const
         {
@@ -414,21 +479,32 @@ namespace jtypes {
             }
 
             throw bad_access("Not a function or not callable.");
-        } 
-
-        /*
-        template<class T>
-        const typename std::enable_if<detail::is_jtypes_type<T>::value, T>::type &
-        get() const {
-            if (_value.which() == (int)detail::jtype_to_enum<T>::value) {
-                return _value.get<T>();
-            } else {
-                throw bad_access("The value held by var does not correspond to requested type in var::get().");
+        }
+        
+        // Object accessors
+        var &operator[](const string_t &key) {
+            // Implicit conversion to object
+            object_t &o = get_variant_or_convert<object_t>();
+            
+            auto iter = o.insert(object_t::value_type(key, var()));
+            return iter.first->second;
+        }
+        
+        
+        const var &operator[](const string_t &key) const {
+            
+            if (_value.is<object_t>()) {
+                const object_t &o = _value.get<object_t>();
+                
+                auto iter = o.find(key);
+                
+                if (iter != o.end()) {
+                    return iter->second;
+                }
             }
-
-        }*/
-
-
+            
+            return undefined_var();
+        }
 
     private:
         typedef variant<
@@ -441,6 +517,14 @@ namespace jtypes {
             array_t,
             object_t
         > oneof;
+        
+        template<class T>
+        T &get_variant_or_convert() {
+            if (!_value.is<T>())
+                _value = T();
+            return _value.get<T>();
+        }
+        
 
         static const var &undefined_var() {
             static var u;

@@ -259,4 +259,15 @@ TEST_CASE("jtypes should handle coercion to floating point types")
     REQUIRE(jtypes::var("-5.5").as<double>() == -5.5);
 }
 
+TEST_CASE("jtypes should allow nested object creation")
+{
+    jtypes::var x; // undefined
+    
+    x["first"]["number"] = jtypes::var(3);
+    x["first"]["string"] = jtypes::var("hello world");
+    
+    REQUIRE(x.is_object());
+    REQUIRE(x["first"]["number"].as<int>() == 3);
+}
+
 
