@@ -10,16 +10,12 @@ endif()
 
 # Options
 
-# Vendor Libraries
-
-#add_subdirectory(vendor/mongoose)
-#add_subdirectory(vendor/variant)
-
 # Library
 
 set(LIB_INCLUDE_DIRS
 	inc
 	vendor/variant
+    vendor/any_function
 )
 
 set(LIB_SOURCES

@@ -76,6 +76,66 @@ TEST_CASE("jtypes can be initialized from simple types")
     }
 }
 
+int func(int x, int y, int z) { return x + y + z; }
+int overloaded(char x, int y, int z) { return x + y + z; }
+int overloaded(int x, int y, int z) { return x + y + z; }
+struct functionoid {
+    int operator()(int x, int y, int z) { return x + y + z; }
+    int const_call(int x) const { return x;}
+};
+struct functionoid_overload {
+    int operator()(int x, int y, int z) { return x + y + z; }
+    int operator()(char x, int y, int z) { return x + y + z; }
+};
+
+
+TEST_CASE("jtypes can be initialized from callables") 
+{
+    using jtypes::functions::make;
+    
+    {
+        jtypes::var x(make(func));
+        REQUIRE(x.is_function());
+    }
+
+    {
+        jtypes::var x(make<int, int, int>(overloaded));
+        REQUIRE(x.is_function());
+    }
+
+    {
+        jtypes::var x(make<char, int, int>(overloaded));
+        REQUIRE(x.is_function());
+    }
+
+    {
+        functionoid o;
+        jtypes::var x(make(o));
+        REQUIRE(x.is_function());
+    }
+
+    {
+        using namespace std::placeholders;
+        functionoid o;
+        jtypes::var x(make<int>(std::bind(&functionoid::const_call, o, _1)));
+        REQUIRE(x.is_function());
+    }
+
+    {
+        jtypes::var x(make([](int x, int y) { return x + y; }));
+        REQUIRE(x.is_function());
+    }
+
+    {
+        functionoid f;
+        std::function<int(int, int, int)> ff = f;
+        jtypes::var x(make(ff));
+        REQUIRE(x.is_function());
+    }
+
+
+}
+
 TEST_CASE("jtypes can be initialized from arrays")
 {
     {
