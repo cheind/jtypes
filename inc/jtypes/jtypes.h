@@ -17,7 +17,6 @@
 #endif
 
 #include "variant.hpp"
-#include "any_function.h"
 
 #if defined(WIN32) || defined(_WIN32)
 #pragma warning(pop) 
@@ -30,6 +29,7 @@
 #include <type_traits>
 #include <utility>
 #include <stdexcept>
+#include <functional>
 
 #include <iostream>
 
@@ -141,7 +141,7 @@ namespace jtypes {
             }
 
             bool empty() const override {
-                return (bool)f;
+                return !(bool)f;
             }
         };
 
@@ -154,7 +154,7 @@ namespace jtypes {
             }
 
             template<typename ReturnType, typename... Args>
-            ReturnType invoke(Args&&... args) {
+            ReturnType invoke(Args&&... args) const {
                 function_wrapper<ReturnType, typename std::decay<Args>::type...> * g =
                     dynamic_cast< function_wrapper<ReturnType, typename std::decay<Args>::type...> *>(ptr.get());
 
@@ -227,7 +227,7 @@ namespace jtypes {
             void operator()(const null_t &v) { value = false; }
             void operator()(const bool_t &v) { value = v; }
             void operator()(const string_t &v) { value = !v.empty(); }
-            void operator()(const function_t &v) { value = v.empty(); }
+            void operator()(const function_t &v) { value = !v.empty(); }
             void operator()(const array_t &v) { value = true; }
             void operator()(const object_t &v) { value = true; }
             void operator()(const number_t &v) {
@@ -403,6 +403,19 @@ namespace jtypes {
             return visitor.value;
         }
 
+        // Callable interface
+        template<typename ReturnType, typename... Args>
+        ReturnType invoke(Args&&... args) const
+        {
+            if (is_function()) {
+                const function_t &f = _value.get<function_t>();
+                if (!f.empty()) {
+                    return f.invoke<ReturnType>(std::forward<Args>(args)...);
+                }
+            }
+
+            throw bad_access("Not a function or not callable.");
+        } 
 
         /*
         template<class T>

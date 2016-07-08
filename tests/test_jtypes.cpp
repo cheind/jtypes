@@ -135,9 +135,8 @@ TEST_CASE("jtypes can be initialized from callables")
 
 
     {
-        jtypes::functions::function_holder fh = { fnc([](int x, int y) { return x + y; }) };
-
-        REQUIRE(fh.invoke<int>(3, 4) == 7);
+        jtypes::var x = fnc([](int a, int b) {return a + b; });
+        REQUIRE(x.invoke<int>(3, 4) == 7);
     }
 
 
