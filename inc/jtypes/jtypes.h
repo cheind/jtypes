@@ -135,7 +135,6 @@ namespace jtypes {
         struct function_wrapper : function_wrapper_base {
             std::function<ReturnType(Args...)> f;
 
-            template<typename ReturnType, typename... Args>
             function_wrapper(const std::function<ReturnType(Args...)> &f_)
                 :f(f_) {
             }
