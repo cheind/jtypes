@@ -17,7 +17,7 @@ TEST_CASE("jtypes can be initialized from simple types")
 {
     {
         jtypes::var x;
-        REQUIRE(x.is_null());
+        REQUIRE(x.is_undefined());
     }
     
     {
@@ -114,7 +114,8 @@ TEST_CASE("jtypes can be initialized from dictionaries")
     {
         jtypes::var x = {
             {"a", jtypes::var(10)},
-            {"b", jtypes::var("hello world")}
+            {"b", jtypes::var("hello world")},
+            {"c", jtypes::var(nullptr)}
         };
         REQUIRE(x.is_object());
     }
@@ -126,16 +127,6 @@ TEST_CASE("jtypes can be initialized from dictionaries")
         };
         REQUIRE(x.is_object());
     }
-}
-
-TEST_CASE("jtypes can fetch values without coercion")
-{
-    
-    jtypes::var x = {
-        {"a", 10},
-        {"b", "hello world"}
-    };
-
 }
 
 TEST_CASE("jtypes should be convertible to bool")
@@ -162,6 +153,7 @@ TEST_CASE("jtypes should handle coercion to integral types")
 {
     
     REQUIRE_THROWS_AS(jtypes::var().as<int>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var(nullptr).as<int>(), jtypes::bad_access);
     REQUIRE_THROWS_AS(jtypes::var({1,2,3}).as<int>(), jtypes::bad_access);
     REQUIRE_THROWS_AS(jtypes::var({{"a",1}}).as<int>(), jtypes::bad_access);
     
@@ -183,6 +175,7 @@ TEST_CASE("jtypes should handle coercion to floating point types")
 {
     
     REQUIRE_THROWS_AS(jtypes::var().as<float>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var(nullptr).as<float>(), jtypes::bad_access);
     REQUIRE_THROWS_AS(jtypes::var({1,2,3}).as<double>(), jtypes::bad_access);
     REQUIRE_THROWS_AS(jtypes::var({{"a",1}}).as<float>(), jtypes::bad_access);
     

@@ -11,7 +11,17 @@
 #ifndef JTYPES_H
 #define JTYPES_H
 
+#if defined(WIN32) || defined(_WIN32)
+    #pragma warning(push)
+    #pragma warning(disable: 4996) 
+#endif
+
 #include "variant.hpp"
+
+#if defined(WIN32) || defined(_WIN32)
+    #pragma warning(pop) 
+#endif
+
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -30,6 +40,7 @@ namespace jtypes {
     class var;
     
     typedef std::nullptr_t null_t;
+    struct undefined_t {};
     typedef bool bool_t;
     typedef std::string string_t;
     typedef std::vector<var> array_t;
@@ -40,7 +51,8 @@ namespace jtypes {
     typedef variant<int64_t, uint64_t, double> number_t;
     
     enum class type {
-        null = 0,
+        undefined = 0,
+        null,
         boolean,
         number,
         string,
@@ -67,22 +79,24 @@ namespace jtypes {
     };
     
     namespace detail {
-        template <typename _Tp> struct is_jtypes_type  : public std::false_type {};
-        template <>          struct is_jtypes_type<null_t>  : public std::true_type {};
-        template <>          struct is_jtypes_type<bool_t>  : public std::true_type {};
-        template <>          struct is_jtypes_type<string_t>  : public std::true_type {};
-        template <>          struct is_jtypes_type<array_t>  : public std::true_type {};
-        template <>          struct is_jtypes_type<object_t>  : public std::true_type {};
-        template <>          struct is_jtypes_type<number_t>  : public std::true_type {};
+        template <typename _Tp> struct is_type  : public std::false_type {};
+        template <>          struct is_type<undefined_t> : public std::true_type {};
+        template <>          struct is_type<null_t>  : public std::true_type {};
+        template <>          struct is_type<bool_t>  : public std::true_type {};
+        template <>          struct is_type<string_t>  : public std::true_type {};
+        template <>          struct is_type<array_t>  : public std::true_type {};
+        template <>          struct is_type<object_t>  : public std::true_type {};
+        template <>          struct is_type<number_t>  : public std::true_type {};
         
         
-        template <typename _Tp> struct jtype_to_enum {};
-        template <>          struct jtype_to_enum<null_t> : public std::integral_constant<type, type::null> {};
-        template <>          struct jtype_to_enum<bool_t> : public std::integral_constant<type, type::boolean> {};
-        template <>          struct jtype_to_enum<string_t> : public std::integral_constant<type, type::string> {};
-        template <>          struct jtype_to_enum<array_t> : public std::integral_constant<type, type::array> {};
-        template <>          struct jtype_to_enum<object_t> : public std::integral_constant<type, type::object> {};
-        template <>          struct jtype_to_enum<number_t> : public std::integral_constant<type, type::number> {};
+        template <typename _Tp> struct enum_of {};
+        template <>          struct enum_of<undefined_t> : public std::integral_constant<type, type::undefined> {};
+        template <>          struct enum_of<null_t> : public std::integral_constant<type, type::null> {};
+        template <>          struct enum_of<bool_t> : public std::integral_constant<type, type::boolean> {};
+        template <>          struct enum_of<string_t> : public std::integral_constant<type, type::string> {};
+        template <>          struct enum_of<array_t> : public std::integral_constant<type, type::array> {};
+        template <>          struct enum_of<object_t> : public std::integral_constant<type, type::object> {};
+        template <>          struct enum_of<number_t> : public std::integral_constant<type, type::number> {};
         
         template<typename ToType, typename EnableIfType = void>
         struct coerce_number
@@ -116,6 +130,7 @@ namespace jtypes {
         {
             bool value = false;
             
+            void operator()(const undefined_t &v) { value = false; }
             void operator()(const null_t &v)  { value = false; }
             void operator()(const bool_t &v)  { value = v; }
             void operator()(const string_t &v)  { value = !v.empty(); }
@@ -190,7 +205,7 @@ namespace jtypes {
         // Value initializers
         
         var()
-        : _value(nullptr) {}
+        : _value(undefined_t()) {}
         
         var(std::nullptr_t)
         : _value(nullptr) {}
@@ -267,6 +282,7 @@ namespace jtypes {
         type get_type() const { return (type)_value.which(); }
         
         
+        bool_t is_undefined() const { return _value.which() == (int)type::undefined; }
         bool_t is_null() const { return _value.which() == (int)type::null; }
         bool_t is_boolean() const { return _value.which() == (int)type::boolean; }
         bool_t is_number() const { return _value.which() == (int)type::number; }
@@ -307,7 +323,20 @@ namespace jtypes {
         
         
     private:
-        typedef variant<null_t, bool_t, number_t, string_t, array_t, object_t> oneof;
+        typedef variant<
+            undefined_t, 
+            null_t, 
+            bool_t, 
+            number_t, 
+            string_t, 
+            array_t,
+            object_t
+        > oneof;
+
+        static const var &undefined_var() {
+            static var u;
+            return u;
+        }
         
         oneof _value;
     };
