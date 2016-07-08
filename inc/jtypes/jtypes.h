@@ -39,18 +39,21 @@ namespace jtypes {
     using mapbox::util::variant;
 
     class var;
-
+    
+    namespace functions {
+        struct function_holder;
+    }
+   
     typedef int64_t sint_t;
     typedef uint64_t uint_t;
     typedef double real_t;
-
 
     struct undefined_t {};
     typedef std::nullptr_t null_t;
     typedef bool bool_t;
     typedef variant<int64_t, uint64_t, double> number_t;
     typedef std::string string_t;
-    typedef any_function function_t;
+    typedef functions::function_holder function_t;
     typedef std::vector<var> array_t;
     typedef std::unordered_map<std::string, var> object_t;
 
@@ -86,7 +89,90 @@ namespace jtypes {
 
     };
 
-    namespace detail {
+    namespace functions {
+
+        //plain function pointers
+        template<typename... Args, typename ReturnType>
+        auto fnc(ReturnType(*p)(Args...))
+            -> std::function<ReturnType(Args...)> {
+            return{ p };
+        }
+
+        //nonconst member function pointers
+        template<typename... Args, typename ReturnType, typename ClassType>
+        auto fnc(ReturnType(ClassType::*p)(Args...))
+            -> std::function<ReturnType(Args...)> {
+            return{ p };
+        }
+
+        //const member function pointers
+        template<typename... Args, typename ReturnType, typename ClassType>
+        auto fnc(ReturnType(ClassType::*p)(Args...) const)
+            -> std::function<ReturnType(Args...)> {
+            return{ p };
+        }
+
+        //qualified functionoids
+        template<typename FirstArg, typename... Args, class T>
+        auto fnc(T&& t)
+            -> std::function<decltype(t(std::declval<FirstArg>(), std::declval<Args>()...))(FirstArg, Args...)> {
+            return{ std::forward<T>(t) };
+        }
+
+        //unqualified functionoids try to deduce the signature of `T::operator()` and use that.
+        template<class T>
+        auto fnc(T&& t)
+            -> decltype(::jtypes::functions::fnc(&std::remove_reference<T>::type::operator())) {
+            return{ std::forward<T>(t) };
+        }
+
+        struct function_wrapper_base {
+            virtual ~function_wrapper_base() = default;
+            virtual bool empty() const = 0;
+        };
+
+        template<typename ReturnType, typename... Args>
+        struct function_wrapper : function_wrapper_base {
+            std::function<ReturnType(Args...)> f;
+
+            template<typename ReturnType, typename... Args>
+            function_wrapper(const std::function<ReturnType(Args...)> &f_)
+                :f(f_) {
+            }
+
+            bool empty() const override {
+                return (bool)f;
+            }
+        };
+
+        struct function_holder {
+            std::shared_ptr<function_wrapper_base> ptr;
+
+            template<typename ReturnType, typename... Args>
+            function_holder(const std::function<ReturnType(Args...)> &f)
+                :ptr(new function_wrapper<ReturnType, Args...>(f)) {
+            }
+
+            template<typename ReturnType, typename... Args>
+            ReturnType invoke(Args&&... args) {
+                function_wrapper<ReturnType, typename std::decay<Args>::type...> * g =
+                    dynamic_cast< function_wrapper<ReturnType, typename std::decay<Args>::type...> *>(ptr.get());
+
+                if (g == nullptr) {
+                    throw bad_access("Failed function to signature requested by parameters.");;
+                }
+
+                return g->f(std::forward<Args>(args)...);
+            }
+
+            bool empty() const {
+                return !ptr || ptr->empty();
+            }
+
+        };
+    }
+
+    namespace details {
         template <typename _Tp> struct is_type : public std::false_type {};
         template <>          struct is_type<undefined_t> : public std::true_type {};
         template <>          struct is_type<null_t> : public std::true_type {};
@@ -141,7 +227,7 @@ namespace jtypes {
             void operator()(const null_t &v) { value = false; }
             void operator()(const bool_t &v) { value = v; }
             void operator()(const string_t &v) { value = !v.empty(); }
-            void operator()(const function_t &v) { value = (bool)v; }
+            void operator()(const function_t &v) { value = v.empty(); }
             void operator()(const array_t &v) { value = true; }
             void operator()(const object_t &v) { value = true; }
             void operator()(const number_t &v) {
@@ -201,45 +287,6 @@ namespace jtypes {
             }
         };
     }
-
-    namespace functions {
-        //plain function pointers
-        template<typename... Args, typename ReturnType>
-        auto make(ReturnType(*p)(Args...))
-            -> std::function<ReturnType(Args...)> {
-            return{ p };
-        }
-
-        //nonconst member function pointers
-        template<typename... Args, typename ReturnType, typename ClassType>
-        auto make(ReturnType(ClassType::*p)(Args...))
-            -> std::function<ReturnType(Args...)> {
-            return{ p };
-        }
-
-        //const member function pointers
-        template<typename... Args, typename ReturnType, typename ClassType>
-        auto make(ReturnType(ClassType::*p)(Args...) const)
-            -> std::function<ReturnType(Args...)> {
-            return{ p };
-        }
-
-        //qualified functionoids
-        template<typename FirstArg, typename... Args, class T>
-        auto make(T&& t)
-            -> std::function<decltype(t(std::declval<FirstArg>(), std::declval<Args>()...))(FirstArg, Args...)> {
-            return{ std::forward<T>(t) };
-        }
-
-        //unqualified functionoids try to deduce the signature of `T::operator()` and use that.
-        template<class T>
-        auto make(T&& t)
-            -> decltype(make(&std::remove_reference<T>::type::operator())) {
-            return{ std::forward<T>(t) };
-        }
-    }
-
-
 
     class var {
     public:
@@ -351,7 +398,7 @@ namespace jtypes {
 
         template<class T>
         T as() const {
-            detail::coerce<T> visitor;
+            details::coerce<T> visitor;
             apply_visitor(visitor, _value);
             return visitor.value;
         }

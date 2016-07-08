@@ -91,46 +91,53 @@ struct functionoid_overload {
 
 TEST_CASE("jtypes can be initialized from callables") 
 {
-    using jtypes::functions::make;
+    using jtypes::functions::fnc;
     
     {
-        jtypes::var x(make(func));
+        jtypes::var x(fnc(func));
         REQUIRE(x.is_function());
     }
 
     {
-        jtypes::var x(make<int, int, int>(overloaded));
+        jtypes::var x(fnc<int, int, int>(overloaded));
         REQUIRE(x.is_function());
     }
 
     {
-        jtypes::var x(make<char, int, int>(overloaded));
+        jtypes::var x(fnc<char, int, int>(overloaded));
         REQUIRE(x.is_function());
     }
 
     {
         functionoid o;
-        jtypes::var x(make(o));
+        jtypes::var x(fnc(o));
         REQUIRE(x.is_function());
     }
 
     {
         using namespace std::placeholders;
         functionoid o;
-        jtypes::var x(make<int>(std::bind(&functionoid::const_call, o, _1)));
+        jtypes::var x(fnc<int>(std::bind(&functionoid::const_call, o, _1)));
         REQUIRE(x.is_function());
     }
 
     {
-        jtypes::var x(make([](int x, int y) { return x + y; }));
+        jtypes::var x(fnc([](int x, int y) { return x + y; }));
         REQUIRE(x.is_function());
     }
 
     {
         functionoid f;
         std::function<int(int, int, int)> ff = f;
-        jtypes::var x(make(ff));
+        jtypes::var x(fnc(ff));
         REQUIRE(x.is_function());
+    }
+
+
+    {
+        jtypes::functions::function_holder fh = { fnc([](int x, int y) { return x + y; }) };
+
+        REQUIRE(fh.invoke<int>(3, 4) == 7);
     }
 
 
@@ -204,6 +211,8 @@ TEST_CASE("jtypes should be convertible to bool")
     
     REQUIRE(jtypes::var("abc"));
     REQUIRE(!jtypes::var(""));
+
+    REQUIRE(jtypes::var(jtypes::functions::fnc([]() {return true; })));
     
     REQUIRE(jtypes::var({1,2,3}));
     REQUIRE(jtypes::var({{"a", 10}}));
