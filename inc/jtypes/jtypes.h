@@ -75,102 +75,212 @@ namespace jtypes {
         unsigned_integral,
         real
     };
-
+    
     class bad_access : public std::logic_error {
-
+        
     public:
         explicit bad_access(const std::string& what_arg)
-            : logic_error(what_arg) {
+        : logic_error(what_arg) {
         }
-
+        
         explicit bad_access(const char* what_arg)
-            : logic_error(what_arg) {
+        : logic_error(what_arg) {
         }
-
+        
     };
-
+    
+    namespace details {
+        template<typename T>
+        using EnableIfSignedIntegralPolicy = typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value>::type;
+        
+        template<typename T>
+        using EnableIfUnsignedIntegralPolicy = typename std::enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value>::type;
+        
+        template<typename T>
+        using EnableIfFloatingPointPolicy = typename std::enable_if<std::is_floating_point<T>::value>::type;
+    }
+    
     namespace functions {
-
+        
         //plain function pointers
         template<typename... Args, typename ReturnType>
         auto fnc(ReturnType(*p)(Args...))
-            -> std::function<ReturnType(Args...)> {
+        -> std::function<ReturnType(Args...)> {
             return{ p };
         }
-
+        
         //nonconst member function pointers
         template<typename... Args, typename ReturnType, typename ClassType>
         auto fnc(ReturnType(ClassType::*p)(Args...))
-            -> std::function<ReturnType(Args...)> {
+        -> std::function<ReturnType(Args...)> {
             return{ p };
         }
-
+        
         //const member function pointers
         template<typename... Args, typename ReturnType, typename ClassType>
         auto fnc(ReturnType(ClassType::*p)(Args...) const)
-            -> std::function<ReturnType(Args...)> {
+        -> std::function<ReturnType(Args...)> {
             return{ p };
         }
-
+        
         //qualified functionoids
         template<typename FirstArg, typename... Args, class T>
         auto fnc(T&& t)
-            -> std::function<decltype(t(std::declval<FirstArg>(), std::declval<Args>()...))(FirstArg, Args...)> {
+        -> std::function<decltype(t(std::declval<FirstArg>(), std::declval<Args>()...))(FirstArg, Args...)> {
             return{ std::forward<T>(t) };
         }
-
+        
         //unqualified functionoids try to deduce the signature of `T::operator()` and use that.
         template<class T>
         auto fnc(T&& t)
-            -> decltype(::jtypes::functions::fnc(&std::remove_reference<T>::type::operator())) {
+        -> decltype(::jtypes::functions::fnc(&std::remove_reference<T>::type::operator())) {
             return{ std::forward<T>(t) };
         }
-
+        
         struct function_wrapper_base {
             virtual ~function_wrapper_base() = default;
             virtual bool empty() const = 0;
         };
-
+        
         template<typename ReturnType, typename... Args>
         struct function_wrapper : function_wrapper_base {
             std::function<ReturnType(Args...)> f;
-
+            
             function_wrapper(const std::function<ReturnType(Args...)> &f_)
-                :f(f_) {
+            :f(f_) {
             }
-
+            
             bool empty() const override {
                 return !(bool)f;
             }
         };
-
+        
         struct function_holder {
             std::shared_ptr<function_wrapper_base> ptr;
-
+            
             template<typename ReturnType, typename... Args>
             function_holder(const std::function<ReturnType(Args...)> &f)
-                :ptr(new function_wrapper<ReturnType, Args...>(f)) {
+            :ptr(new function_wrapper<ReturnType, Args...>(f)) {
             }
-
+            
             template<typename ReturnType, typename... Args>
             ReturnType invoke(Args&&... args) const {
                 function_wrapper<ReturnType, typename std::decay<Args>::type...> * g =
-                    dynamic_cast< function_wrapper<ReturnType, typename std::decay<Args>::type...> *>(ptr.get());
-
+                dynamic_cast< function_wrapper<ReturnType, typename std::decay<Args>::type...> *>(ptr.get());
+                
                 if (g == nullptr) {
                     throw bad_access("Failed function to signature requested by parameters.");;
                 }
-
+                
                 return g->f(std::forward<Args>(args)...);
             }
-
+            
             bool empty() const {
                 return !ptr || ptr->empty();
             }
-
+            
         };
     }
 
+    
+    class var {
+    public:
+        
+        // Value initializers
+        
+        var();
+        
+        
+        var(std::nullptr_t);
+        
+        var(bool v);
+        
+        
+        template<typename I>
+        var(I t, typename details::EnableIfSignedIntegralPolicy<I>* unused = 0);
+        
+        template<typename I>
+        var(I t, typename details::EnableIfUnsignedIntegralPolicy<I>* unused = 0);
+        
+        template<typename I>
+        var(I t, typename details::EnableIfFloatingPointPolicy<I>* unused = 0);
+        
+        var(double v);
+        
+        var(const char* v);
+        
+        var(const std::string &v);
+        
+        var(std::string &&v);
+        
+        template<typename... Args, typename ReturnType>
+        var(std::function<ReturnType(Args...)> v);
+        
+        
+        // Array initializers
+        
+        template<typename T>
+        var(std::initializer_list<T> v);
+        
+        template<typename T>
+        var(const std::vector<T> &v);
+        
+        // Dictionary initializers
+        
+        var(std::initializer_list< std::pair<string_t, var> > v);
+        
+        // Type queries
+        type get_type() const;
+        bool_t is_undefined() const;
+        bool_t is_null() const;
+        bool_t is_boolean() const;
+        bool_t is_number() const;
+        bool_t is_string() const;
+        bool_t is_function() const;
+        bool_t is_array() const;
+        bool_t is_object() const;
+        bool_t is_signed_integral() const;
+        bool_t is_unsigned_integral() const;
+        bool_t is_real() const;
+        
+        // Getters with coercion
+        
+        explicit operator bool() const;
+        
+        template<class T>
+        T as() const;
+        
+        // Callable interface
+        
+        template<typename ReturnType, typename... Args>
+        ReturnType invoke(Args&&... args) const;
+        
+        // Object accessors
+        var &operator[](const string_t &key);
+        const var &operator[](const string_t &key) const;
+        
+    private:
+        typedef variant<
+        undefined_t,
+        null_t,
+        bool_t,
+        number_t,
+        string_t,
+        function_t,
+        array_t,
+        object_t
+        > oneof;
+        
+        template<class T>
+        T &get_variant_or_convert();
+        
+        
+        static const var &undefined_var();
+        
+        oneof _value;
+    };
+
+    
     namespace details {
         template <typename _Tp> struct is_type : public std::false_type {};
         template <>          struct is_type<undefined_t> : public std::true_type {};
@@ -287,11 +397,13 @@ namespace jtypes {
             void operator()(const array_t &v) {
                 std::ostringstream oss;
                 oss << '[';
-                // oss << join(v, ',', [](const var &vv) {});
+                oss << join(v, ",", [](const var &vv) { return vv.as<std::string>();});
                 oss << ']';
-                value = true;
+                value = oss.str();
             }
-            void operator()(const object_t &v) { value = ""; }
+            void operator()(const object_t &v) {
+                value = "";
+            }
             
             void operator()(const number_t &v) {
                 coerce_number<std::string> cn;
@@ -351,188 +463,159 @@ namespace jtypes {
         };
     }
 
-    class var {
-    public:
+    // Implementation
+    
+    
+    inline var::var()
+    : _value(undefined_t()) {
+    }
+    
+    inline var::var(std::nullptr_t)
+    : _value(nullptr) {
+    }
+    
+    inline var::var(bool v)
+    : _value(v) {
+    }
+    
+    template<typename I>
+    inline var::var(I t, typename details::EnableIfSignedIntegralPolicy<I>* unused)
+    : _value(number_t(static_cast<int64_t>(t))) {
+    }
+    
+    template<typename I>
+    inline var::var(I t, typename details::EnableIfUnsignedIntegralPolicy<I>* unused)
+    : _value(number_t(static_cast<uint64_t>(t))) {
+    }
+    
+    template<typename I>
+    inline var::var(I t, typename details::EnableIfFloatingPointPolicy<I>* unused)
+    : _value(number_t(static_cast<double>(t))) {
+    }
+    
+    inline var::var(double v)
+    : _value(number_t(v)) {
+    }
+    
+    inline var::var(const char* v)
+    : _value(std::string(v)) {
+    }
+    
+    inline var::var(const std::string &v)
+    : _value(v) {
+    }
+    
+    inline var::var(std::string &&v)
+    : _value(std::move(v)) {
+    }
 
-        // Value initializers
+    
+    template<typename... Args, typename ReturnType>
+    inline var::var(std::function<ReturnType(Args...)> v)
+    : _value(function_t(v)) {
+    }
 
-        var()
-            : _value(undefined_t()) {
+    template<typename T>
+    inline var::var(std::initializer_list<T> v) {
+        array_t a;
+        for (auto && t : v) {
+            a.emplace_back(var(t));
         }
-
-        var(std::nullptr_t)
-            : _value(nullptr) {
+        _value = std::move(a);
+    }
+    
+    template<typename T>
+    inline var::var(const std::vector<T> &v) {
+        array_t a;
+        for (auto && t : v) {
+            a.emplace_back(var(t));
         }
-
-        var(bool v)
-            : _value(v) {
+        _value = std::move(a);
+    }
+    
+    inline var::var(std::initializer_list< std::pair<string_t, var> > v) {
+        object_t o;
+        for (auto &&t : v) {
+            o.insert(object_t::value_type(t.first, t.second));
         }
+        _value = std::move(o);
+    }
+    
+    inline type var::get_type() const { return (type)_value.which(); }
+    
+    inline bool_t var::is_undefined() const { return _value.which() == (int)type::undefined; }
+    inline bool_t var::is_null() const { return _value.which() == (int)type::null; }
+    inline bool_t var::is_boolean() const { return _value.which() == (int)type::boolean; }
+    inline bool_t var::is_number() const { return _value.which() == (int)type::number; }
+    inline bool_t var::is_string() const { return _value.which() == (int)type::string; }
+    inline bool_t var::is_function() const { return _value.which() == (int)type::function; }
+    inline bool_t var::is_array() const { return _value.which() == (int)type::array; }
+    inline bool_t var::is_object() const { return _value.which() == (int)type::object; }
+    
+    inline bool_t var::is_signed_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::signed_integral; }
+    inline bool_t var::is_unsigned_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::unsigned_integral; }
+    inline bool_t var::is_real() const { return is_number() && _value.get<number_t>().which() == (int)number_type::real; }
+    
+    inline var::operator bool() const {
+        return as<bool>();
+    }
 
-
-        template<typename I>
-        var(I t, typename std::enable_if<std::is_integral<I>::value && std::is_signed<I>::value>::type* unused = 0)
-            : _value(number_t(static_cast<int64_t>(t))) {
-        }
-
-        template<typename I>
-        var(I t, typename std::enable_if<std::is_integral<I>::value && std::is_unsigned<I>::value>::type* unused = 0)
-            : _value(number_t(static_cast<uint64_t>(t))) {
-        }
-
-        template<typename I>
-        var(I t, typename std::enable_if<std::is_floating_point<I>::value>::type* unused = 0)
-            : _value(number_t(static_cast<double>(t))) {
-        }
-
-        var(double v)
-            : _value(number_t(v)) {
-        }
-
-        var(const char* v)
-            : _value(std::string(v)) {
-        }
-
-        var(const std::string &v)
-            : _value(v) {
-        }
-
-        var(std::string &&v)
-            : _value(std::move(v)) {
-        }
-
-        template<typename... Args, typename ReturnType>
-        var(std::function<ReturnType(Args...)> v)
-            : _value(function_t(v)) {
-        }
-
-
-        // Array initializers
-
-        template<typename T>
-        var(std::initializer_list<T> v) {
-            array_t a;
-            for (auto && t : v) {
-                a.emplace_back(var(t));
+    template<class T>
+    inline T var::as() const {
+        details::coerce<T> visitor;
+        apply_visitor(visitor, _value);
+        return visitor.value;
+    }
+    
+    template<typename ReturnType, typename... Args>
+    inline ReturnType var::invoke(Args&&... args) const
+    {
+        if (is_function()) {
+            const function_t &f = _value.get<function_t>();
+            if (!f.empty()) {
+                return f.invoke<ReturnType>(std::forward<Args>(args)...);
             }
-            _value = std::move(a);
-        }
-
-        template<typename T>
-        var(const std::vector<T> &v) {
-            array_t a;
-            for (auto && t : v) {
-                a.emplace_back(var(t));
-            }
-            _value = std::move(a);
-        }
-
-        // Dictionary initializers
-
-        var(std::initializer_list< std::pair<string_t, var> > v) {
-            object_t o;
-            for (auto &&t : v) {
-                o.insert(object_t::value_type(t.first, t.second));
-            }
-            _value = std::move(o);
-        }
-
-        // Type queries
-        type get_type() const { return (type)_value.which(); }
-
-
-        bool_t is_undefined() const { return _value.which() == (int)type::undefined; }
-        bool_t is_null() const { return _value.which() == (int)type::null; }
-        bool_t is_boolean() const { return _value.which() == (int)type::boolean; }
-        bool_t is_number() const { return _value.which() == (int)type::number; }
-        bool_t is_string() const { return _value.which() == (int)type::string; }
-        bool_t is_function() const { return _value.which() == (int)type::function; }
-        bool_t is_array() const { return _value.which() == (int)type::array; }
-        bool_t is_object() const { return _value.which() == (int)type::object; }
-
-        bool_t is_signed_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::signed_integral; }
-        bool_t is_unsigned_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::unsigned_integral; }
-        bool_t is_real() const { return is_number() && _value.get<number_t>().which() == (int)number_type::real; }
-
-        // Getters with coercion
-
-        explicit operator bool() const {
-            return as<bool>();
-        }
-
-        template<class T>
-        T as() const {
-            details::coerce<T> visitor;
-            apply_visitor(visitor, _value);
-            return visitor.value;
-        }
-
-        // Callable interface
-        
-        template<typename ReturnType, typename... Args>
-        ReturnType invoke(Args&&... args) const
-        {
-            if (is_function()) {
-                const function_t &f = _value.get<function_t>();
-                if (!f.empty()) {
-                    return f.invoke<ReturnType>(std::forward<Args>(args)...);
-                }
-            }
-
-            throw bad_access("Not a function or not callable.");
         }
         
-        // Object accessors
-        var &operator[](const string_t &key) {
-            // Implicit conversion to object
-            object_t &o = get_variant_or_convert<object_t>();
+        throw bad_access("Not a function or not callable.");
+    }
+    
+    // Object accessors
+    inline var &var::operator[](const string_t &key) {
+        // Implicit conversion to object
+        object_t &o = get_variant_or_convert<object_t>();
+        
+        auto iter = o.insert(object_t::value_type(key, var()));
+        return iter.first->second;
+    }
+    
+    inline const var &var::operator[](const string_t &key) const {
+        
+        if (_value.is<object_t>()) {
+            const object_t &o = _value.get<object_t>();
             
-            auto iter = o.insert(object_t::value_type(key, var()));
-            return iter.first->second;
-        }
-        
-        
-        const var &operator[](const string_t &key) const {
+            auto iter = o.find(key);
             
-            if (_value.is<object_t>()) {
-                const object_t &o = _value.get<object_t>();
-                
-                auto iter = o.find(key);
-                
-                if (iter != o.end()) {
-                    return iter->second;
-                }
+            if (iter != o.end()) {
+                return iter->second;
             }
-            
-            return undefined_var();
-        }
-
-    private:
-        typedef variant<
-            undefined_t,
-            null_t,
-            bool_t,
-            number_t,
-            string_t,
-            function_t,
-            array_t,
-            object_t
-        > oneof;
-        
-        template<class T>
-        T &get_variant_or_convert() {
-            if (!_value.is<T>())
-                _value = T();
-            return _value.get<T>();
         }
         
-
-        static const var &undefined_var() {
-            static var u;
-            return u;
-        }
-
-        oneof _value;
-    };
+        return undefined_var();
+    }
+    
+    template<class T>
+    inline T &var::get_variant_or_convert() {
+        if (!_value.is<T>())
+            _value = T();
+        return _value.get<T>();
+    }
+    
+    
+    inline const var &var::undefined_var() {
+        static var u;
+        return u;
+    }
 
 
 }

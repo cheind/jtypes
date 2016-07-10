@@ -259,6 +259,18 @@ TEST_CASE("jtypes should handle coercion to floating point types")
     REQUIRE(jtypes::var("-5.5").as<double>() == -5.5);
 }
 
+TEST_CASE("jtypes should handle coercion to string")
+{
+    REQUIRE(jtypes::var().as<std::string>() == "undefined");
+    REQUIRE(jtypes::var(nullptr).as<std::string>() == "null");
+    REQUIRE(jtypes::var(true).as<std::string>() == "true");
+    REQUIRE(jtypes::var(false).as<std::string>() == "false");;
+    REQUIRE(jtypes::var(-2).as<std::string>() == "-2");
+    REQUIRE(jtypes::var({1,2,3}).as<std::string>() == "[1,2,3]");
+    
+}
+
+
 TEST_CASE("jtypes should allow nested object creation")
 {
     jtypes::var x; // undefined
