@@ -81,6 +81,42 @@ TEST_CASE("jtypes can be initialized from simple types")
     }
 }
 
+TEST_CASE("jtypes can be assigned from simple types")
+{
+    jtypes::var x;
+    
+    x = nullptr;
+    REQUIRE(x.is_null());
+    
+    x = true;
+    REQUIRE(x.is_boolean());
+    
+    x = 0;
+    REQUIRE(x.is_signed_integral());
+    
+    x = 10;
+    REQUIRE(x.is_signed_integral());
+    
+    x = -3;
+    REQUIRE(x.is_signed_integral());
+    
+    x = 3u;
+    REQUIRE(x.is_unsigned_integral());
+
+    x = 3.f;
+    REQUIRE(x.is_real());
+    
+    x = 'a';
+    REQUIRE(x.is_string());
+    
+    x = "hello";
+    REQUIRE(x.is_string());
+    
+    x = std::string("hello");
+    REQUIRE(x.is_string());
+}
+
+
 int func(int x, int y, int z) { return x + y + z; }
 int overloaded(char x, int y, int z) { return x + y + z; }
 int overloaded(int x, int y, int z) { return x + y + z; }
@@ -143,8 +179,17 @@ TEST_CASE("jtypes can be initialized from callables")
         jtypes::var x = fnc([](int a, int b) {return a + b; });
         REQUIRE(x.invoke<int>(3, 4) == 7);
     }
+}
 
-
+TEST_CASE("jtypes can be assigned from callables")
+{
+    using jtypes::functions::fnc;
+    
+    jtypes::var x;
+    
+    x = fnc([](int x, int y) { return x + y; });
+    REQUIRE(x.is_function());
+    
 }
 
 TEST_CASE("jtypes can be initialized from arrays")
@@ -172,6 +217,28 @@ TEST_CASE("jtypes can be initialized from arrays")
     }
 }
 
+TEST_CASE("jtypes can be assigned from arrays")
+{
+    {
+        jtypes::var x;
+        x = {1,2,3};
+        REQUIRE(x.is_array());
+    }
+    
+    {
+        jtypes::var x;
+        x = {jtypes::var(1),jtypes::var(2),jtypes::var(3)};
+        REQUIRE(x.is_array());
+    }
+    
+    {
+        std::vector<int> v = {1, 2, 3};
+        jtypes::var x;
+        x = v;
+        REQUIRE(x.is_array());
+    }
+}
+
 TEST_CASE("jtypes can be initialized from dictionaries")
 {
     {
@@ -195,6 +262,28 @@ TEST_CASE("jtypes can be initialized from dictionaries")
         jtypes::var x = {
             {"a", 10},
             {"b", {{"c", "hello world"}}}
+        };
+        REQUIRE(x.is_object());
+    }
+}
+
+TEST_CASE("jtypes can be assigned from dictionaries")
+{
+    {
+        jtypes::var x;
+        x = {
+            {"a", 10},
+            {"b", "hello world"}
+        };
+        REQUIRE(x.is_object());
+    }
+    
+    {
+        jtypes::var x;
+        x = {
+            {"a", jtypes::var(10)},
+            {"b", jtypes::var("hello world")},
+            {"c", jtypes::var(nullptr)}
         };
         REQUIRE(x.is_object());
     }
@@ -324,7 +413,7 @@ TEST_CASE("jtypes should allow on the fly array creation")
 {
     jtypes::var x; // undefined
     
-    x[0] = "a";
+    x[0] = jtypes::var("a");
     x[3] = "b";
     
     REQUIRE(x.is_array());

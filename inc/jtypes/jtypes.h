@@ -97,14 +97,14 @@ namespace jtypes {
     };
     
     namespace details {
-        template<typename T>
-        using EnableIfSignedIntegralPolicy = typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value>::type;
+        template<typename T, typename R = void>
+        using EnableIfSignedIntegralPolicy = typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, R>::type;
         
-        template<typename T>
-        using EnableIfUnsignedIntegralPolicy = typename std::enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value>::type;
+        template<typename T, typename R = void>
+        using EnableIfUnsignedIntegralPolicy = typename std::enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value, R>::type;
         
-        template<typename T>
-        using EnableIfFloatingPointPolicy = typename std::enable_if<std::is_floating_point<T>::value>::type;
+        template<typename T, typename R = void>
+        using EnableIfFloatingPointPolicy = typename std::enable_if<std::is_floating_point<T>::value, R>::type;
     }
     
     namespace functions {
@@ -205,11 +205,9 @@ namespace jtypes {
         
         var();
         
-        
         var(std::nullptr_t);
         
         var(bool v);
-        
         
         template<typename I>
         var(I t, typename details::EnableIfSignedIntegralPolicy<I>* unused = 0);
@@ -222,7 +220,7 @@ namespace jtypes {
         
         var(double v);
         
-        var(char);
+        var(char v);
         
         var(const char* v);
         
@@ -231,8 +229,43 @@ namespace jtypes {
         var(std::string &&v);
         
         template<typename... Args, typename ReturnType>
-        var(std::function<ReturnType(Args...)> v);
+        var(const std::function<ReturnType(Args...)> &v);
         
+        // Assignments
+        
+        var &operator=(const var &rhs) = default;
+        var &operator=(std::nullptr_t);
+        var &operator=(bool rhs);
+        var &operator=(double rhs);
+        var &operator=(char rhs);
+        var &operator=(const char* v);
+        var &operator=(const string_t &rhs);
+        
+        template<typename I>
+        details::EnableIfSignedIntegralPolicy<I, var&>
+        operator=(I t);
+        
+        template<typename I>
+        details::EnableIfUnsignedIntegralPolicy<I, var&>
+        operator=(I t);
+        
+        template<typename I>
+        details::EnableIfFloatingPointPolicy<I, var&>
+        operator=(I t);
+
+        template<typename... Args, typename ReturnType>
+        var &operator=(const std::function<ReturnType(Args...)> &rhs);
+        
+        template<typename T>
+        var& operator=(std::initializer_list<T> rhs);
+        
+        template<typename T>
+        var& operator=(const std::vector<T> &rhs);
+        
+        var& operator=(const array_t &rhs);
+        
+        var& operator=(std::initializer_list< std::pair<string_t, var> > rhs);
+
         
         // Array initializers
         
@@ -316,6 +349,11 @@ namespace jtypes {
         template<class T>
         T &get_variant_or_convert();
         
+        template<class Range>
+        void initialize_array(const Range &r);
+        
+        template<class Range>
+        void initialize_object(const Range &r);
         
         static const var &undefined_var();
         
@@ -558,26 +596,18 @@ namespace jtypes {
 
     
     template<typename... Args, typename ReturnType>
-    inline var::var(std::function<ReturnType(Args...)> v)
+    inline var::var(const std::function<ReturnType(Args...)> &v)
     : _value(function_t(v)) {
     }
 
     template<typename T>
     inline var::var(std::initializer_list<T> v) {
-        array_t a;
-        for (auto && t : v) {
-            a.emplace_back(var(t));
-        }
-        _value = std::move(a);
+        initialize_array(v);
     }
     
     template<typename T>
     inline var::var(const std::vector<T> &v) {
-        array_t a;
-        for (auto && t : v) {
-            a.emplace_back(var(t));
-        }
-        _value = std::move(a);
+        initialize_array(v);
     }
     
     inline var::var(const array_t &v)
@@ -585,12 +615,88 @@ namespace jtypes {
     {}
     
     inline var::var(std::initializer_list< std::pair<string_t, var> > v) {
-        object_t o;
-        for (auto &&t : v) {
-            o.insert(object_t::value_type(t.first, t.second));
-        }
-        _value = std::move(o);
+        initialize_object(v);
     }
+    
+    inline var &var::operator=(std::nullptr_t) {
+        _value = nullptr;
+        return *this;
+    }
+    
+    inline var &var::operator=(bool rhs) {
+        _value = rhs;
+        return *this;
+    }
+    
+    inline var &var::operator=(double rhs) {
+        _value = rhs;
+        return *this;
+    }
+    
+    inline var &var::operator=(char rhs) {
+        _value = string_t(&rhs, 1);
+        return *this;
+    }
+    
+    inline var &var::operator=(const char *rhs) {
+        _value = string_t(rhs);
+        return *this;
+    }
+    
+    inline var &var::operator=(const string_t &rhs) {
+        _value = rhs;
+        return *this;
+    }
+    
+    template<typename... Args, typename ReturnType>
+    inline var &var::operator=(const std::function<ReturnType(Args...)> &rhs) {
+        _value = function_t(rhs);
+        return *this;
+    }
+    
+    template<typename T>
+    inline var &var::operator=(std::initializer_list<T> rhs) {
+        initialize_array(rhs);
+        return *this;
+    }
+
+    template<typename T>
+    inline var &var::operator=(const std::vector<T> &rhs) {
+        initialize_array(rhs);
+        return *this;
+    }
+    
+    inline var &var::operator=(const array_t &rhs) {
+        _value = rhs;
+        return *this;
+    }
+    
+    inline var &var::operator=(std::initializer_list< std::pair<string_t, var> > rhs) {
+        initialize_object(rhs);
+        return *this;
+    }
+    
+    template<typename I>
+    inline details::EnableIfSignedIntegralPolicy<I, var&>
+    var::operator=(I t) {
+        _value = number_t(static_cast<int64_t>(t));
+        return *this;
+    }
+    
+    template<typename I>
+    inline details::EnableIfUnsignedIntegralPolicy<I, var&>
+    var::operator=(I t) {
+        _value = number_t(static_cast<uint64_t>(t));
+        return *this;
+    }
+    
+    template<typename I>
+    inline details::EnableIfFloatingPointPolicy<I, var&>
+    var::operator=(I t) {
+        _value = number_t(static_cast<double>(t));
+        return *this;
+    }
+    
     
     inline type var::get_type() const { return (type)_value.which(); }
     
@@ -685,6 +791,31 @@ namespace jtypes {
         return _value.get<T>();
     }
     
+    template<class Range>
+    inline void var::initialize_array(const Range &r) {
+        using value_type = typename std::decay< decltype(*std::begin(r)) >::type;
+        
+        array_t a;
+        for (auto && t : r) {
+            if (std::is_same<value_type, var>::value) {
+                a.push_back(t);
+            } else {
+                a.emplace_back(var(t));
+            }
+        }
+        _value = std::move(a);
+    }
+    
+    template<class Range>
+    inline void var::initialize_object(const Range &r) {
+        
+        object_t o;
+        for (auto && t : r) {
+            o.insert(object_t::value_type(t.first, t.second));
+        }
+        _value = std::move(o);
+    }
+    
     
     inline const var &var::undefined_var() {
         static var u;
@@ -754,7 +885,6 @@ namespace jtypes {
     
     inline bool var::operator!=(var const& rhs) const {
         return !(*this == rhs);
-        
     }
     
     inline bool var::operator<(var const& rhs) const {
