@@ -274,13 +274,14 @@ namespace jtypes {
         template<typename ReturnType, typename... Args>
         ReturnType invoke(Args&&... args) const;
         
-        // Object accessors
+        // Array / Object accessors
         
-        var &operator[](const string_t &key);
-        const var &operator[](const string_t &key) const;
+        var &operator[](const var &key);
+        const var &operator[](const var &key) const;
         
         // Keys accessor
         var keys() const;
+        var values() const;
         
         // Array accessors
         
@@ -433,7 +434,7 @@ namespace jtypes {
             void operator()(const undefined_t &v) { value = "undefined"; }
             void operator()(const null_t &v) { value = "null"; }
             void operator()(const bool_t &v) { value = v ? "true" : "false"; }
-            void operator()(const string_t &v) { value = std::string("\"") + v + std::string("\""); }
+            void operator()(const string_t &v) { value = v; }
             void operator()(const function_t &v) { value = "function"; }
             void operator()(const array_t &v) {
                 std::ostringstream oss;
@@ -630,28 +631,51 @@ namespace jtypes {
         throw bad_access("Not a function or not callable.");
     }
     
-    // Object accessors
-    inline var &var::operator[](const string_t &key) {
-        // Implicit conversion to object
-        object_t &o = get_variant_or_convert<object_t>();
+    // Object / Array accessors
+    inline var &var::operator[](const var &key) {
         
-        auto iter = o.insert(object_t::value_type(key, var()));
-        return iter.first->second;
+        if (key.is_number()) {
+            
+            array_t &a = get_variant_or_convert<array_t>();
+            size_t idx = key.as<size_t>();
+            if (a.size() < idx + 1) {
+                a.resize(idx + 1);
+            }
+            return a[idx];
+        } else if (key.is_string()) {
+            // Implicit conversion to object
+            object_t &o = get_variant_or_convert<object_t>();
+            
+            auto iter = o.insert(object_t::value_type(key.as<std::string>(), var()));
+            return iter.first->second;
+        } else {
+            throw bad_access("Key is not number or string.");
+        }
+        
     }
     
-    inline const var &var::operator[](const string_t &key) const {
-        
-        if (_value.is<object_t>()) {
+    inline const var &var::operator[](const var &key) const {
+        if (key.is_number() && is_array()) {
+            const array_t &a = _value.get<array_t>();
+            size_t idx = key.as<size_t>();
+            if (idx < a.size()) {
+                return a[idx];
+            } else {
+                return undefined_var();
+            }
+        } else if (key.is_string() && is_object()) {
             const object_t &o = _value.get<object_t>();
             
-            auto iter = o.find(key);
+            auto iter = o.find(key.as<std::string>());
             
             if (iter != o.end()) {
                 return iter->second;
+            } else {
+                return undefined_var();
             }
+        } else {
+            throw bad_access("Key is not number or string.");
         }
-        
-        return undefined_var();
     }
     
     template<class T>
@@ -668,15 +692,36 @@ namespace jtypes {
     }
 
     inline var var::keys() const {
+        array_t r;
+        
         if (is_object()) {
             const object_t &o = _value.get<object_t>();
-            array_t a;
             for (auto p : o) {
-                a.push_back(var(p.first));
+                r.push_back(var(p.first));
             }
-            return var(a);
+            std::sort(r.begin(), r.end());
+        } else if (is_array()) {
+            const array_t &a = _value.get<array_t>();
+            for (size_t i = 0; i < a.size(); ++i) {
+                r.push_back(var(std::to_string(i)));
+            }
         }
-        return var(array_t());
+        
+        return var(r);
+        
+    }
+    
+    inline var var::values() const {
+        array_t r;
+        
+        if (is_object()) {
+            for (auto k : keys()) {
+                r.push_back((*this)[k]);
+            }
+        } else if (is_array()) {
+            r = _value.get<array_t>();
+        }
+        return var(r);
     }
     
     inline array_t::iterator var::begin() {

@@ -273,12 +273,12 @@ TEST_CASE("jtypes should handle coercion to string")
     REQUIRE(jtypes::var(false).as<std::string>() == "false");;
     REQUIRE(jtypes::var(-2).as<std::string>() == "-2");
     REQUIRE(jtypes::var({1,2,3}).as<std::string>() == "[1,2,3]");
-    REQUIRE(jtypes::var({'a','b','c'}).as<std::string>() == R"(["a","b","c"])");
-    REQUIRE(jtypes::var("hello world!").as<std::string>() == R"("hello world!")");
+    REQUIRE(jtypes::var({'a','b','c'}).as<std::string>() == "[a,b,c]");
+    REQUIRE(jtypes::var("hello world!").as<std::string>() == "hello world!");
     
 }
 
-TEST_CASE("jtypes keys should be iterable")
+TEST_CASE("jtypes key and values should be iterable")
 {
     jtypes::var x = {
         {"a", 2},
@@ -287,12 +287,19 @@ TEST_CASE("jtypes keys should be iterable")
     };
     
     jtypes::var keys = x.keys();
+    jtypes::var values = x.values();
     
-    std::sort(keys.begin(), keys.end());
+    REQUIRE(keys == jtypes::var({"a", "b", "c"}));
+    REQUIRE(values == jtypes::var({2, "hello world", true}));
     
-    REQUIRE(keys.as<std::string>() == R"(["a","b","c"])");
-    REQUIRE(keys == jtypes::var({'a', 'b', 'c'}));
+    // holds also for arrays
     
+    x = jtypes::var({"a", "b", "c"});
+    keys = x.keys();
+    values = x.values();
+    
+    REQUIRE(keys == jtypes::var({"0", "1", "2"}));
+    REQUIRE(values == jtypes::var({"a", "b", "c"}));
 }
 
 
@@ -305,6 +312,35 @@ TEST_CASE("jtypes should allow nested object creation")
     
     REQUIRE(x.is_object());
     REQUIRE(x["first"]["number"].as<int>() == 3);
+    
+    // const
+    
+    const jtypes::var &xx = x;
+    REQUIRE(xx.is_object());
+    REQUIRE(xx["first"]["number"].as<int>() == 3);
+}
+
+TEST_CASE("jtypes should allow on the fly array creation")
+{
+    jtypes::var x; // undefined
+    
+    x[0] = "a";
+    x[3] = "b";
+    
+    REQUIRE(x.is_array());
+    REQUIRE(x[0].as<std::string>() == "a");
+    REQUIRE(x[1].as<std::string>() == "undefined");
+    REQUIRE(x[2].as<std::string>() == "undefined");
+    REQUIRE(x[3].as<std::string>() == "b");
+    
+    // const ref
+    const jtypes::var &xx = x;
+    REQUIRE(xx.is_array());
+    REQUIRE(xx[0].as<std::string>() == "a");
+    REQUIRE(xx[1].as<std::string>() == "undefined");
+    REQUIRE(xx[2].as<std::string>() == "undefined");
+    REQUIRE(xx[3].as<std::string>() == "b");
+    
 }
 
 
