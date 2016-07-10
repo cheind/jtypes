@@ -48,7 +48,10 @@ namespace jtypes {
     typedef uint64_t uint_t;
     typedef double real_t;
 
-    struct undefined_t {};
+    struct undefined_t {
+        bool operator==(const undefined_t &rhs) const { return false; }
+        bool operator<(const undefined_t &rhs) const { return false; }
+    };
     typedef std::nullptr_t null_t;
     typedef bool bool_t;
     typedef variant<int64_t, uint64_t, double> number_t;
@@ -56,6 +59,10 @@ namespace jtypes {
     typedef functions::function_holder function_t;
     typedef std::vector<var> array_t;
     typedef std::unordered_map<std::string, var> object_t;
+    
+    
+    bool operator<(const object_t &o1, const object_t &o2) { return false; }
+    bool operator==(const object_t &o1, const object_t &o2) { return false; }
 
 
 
@@ -179,6 +186,14 @@ namespace jtypes {
                 return !ptr || ptr->empty();
             }
             
+            bool operator==(const function_holder &rhs) const {
+                return false;
+            }
+            
+            bool operator<(const function_holder &rhs) const {
+                return false;
+            }
+            
         };
     }
 
@@ -207,9 +222,11 @@ namespace jtypes {
         
         var(double v);
         
+        var(char);
+        
         var(const char* v);
         
-        var(const std::string &v);
+        var(const string_t &v);
         
         var(std::string &&v);
         
@@ -224,6 +241,8 @@ namespace jtypes {
         
         template<typename T>
         var(const std::vector<T> &v);
+        
+        var(const array_t &v);
         
         // Dictionary initializers
         
@@ -256,8 +275,30 @@ namespace jtypes {
         ReturnType invoke(Args&&... args) const;
         
         // Object accessors
+        
         var &operator[](const string_t &key);
         const var &operator[](const string_t &key) const;
+        
+        // Keys accessor
+        var keys() const;
+        
+        // Array accessors
+        
+        array_t::iterator begin();
+        array_t::iterator end();
+        
+        array_t::const_iterator begin() const;
+        array_t::const_iterator end() const;
+        
+        // Comparison interface
+        
+        bool operator==(var const& rhs) const;
+        bool operator!=(var const& rhs) const;
+        bool operator<(var const& rhs) const;
+        bool operator>(var const& rhs) const;
+        bool operator<=(var const& rhs) const;
+        bool operator>=(var const &rhs) const;
+        
         
     private:
         typedef variant<
@@ -392,7 +433,7 @@ namespace jtypes {
             void operator()(const undefined_t &v) { value = "undefined"; }
             void operator()(const null_t &v) { value = "null"; }
             void operator()(const bool_t &v) { value = v ? "true" : "false"; }
-            void operator()(const string_t &v) { value = v; }
+            void operator()(const string_t &v) { value = std::string("\"") + v + std::string("\""); }
             void operator()(const function_t &v) { value = "function"; }
             void operator()(const array_t &v) {
                 std::ostringstream oss;
@@ -501,6 +542,11 @@ namespace jtypes {
     : _value(std::string(v)) {
     }
     
+    inline var::var(char v)
+    : _value(std::string(&v, 1)) {
+    }
+    
+    
     inline var::var(const std::string &v)
     : _value(v) {
     }
@@ -532,6 +578,10 @@ namespace jtypes {
         }
         _value = std::move(a);
     }
+    
+    inline var::var(const array_t &v)
+    :_value(v)
+    {}
     
     inline var::var(std::initializer_list< std::pair<string_t, var> > v) {
         object_t o;
@@ -617,7 +667,66 @@ namespace jtypes {
         return u;
     }
 
-
+    inline var var::keys() const {
+        if (is_object()) {
+            const object_t &o = _value.get<object_t>();
+            array_t a;
+            for (auto p : o) {
+                a.push_back(var(p.first));
+            }
+            return var(a);
+        }
+        return var(array_t());
+    }
+    
+    inline array_t::iterator var::begin() {
+        if (!is_array())
+            throw bad_access("Not an array.");
+        return _value.get<array_t>().begin();
+    }
+    
+    inline array_t::iterator var::end() {
+        if (!is_array())
+            throw bad_access("Not an array.");
+        return _value.get<array_t>().end();
+    }
+    
+    inline array_t::const_iterator var::begin() const {
+        if (!is_array())
+            throw bad_access("Not an array.");
+        return _value.get<array_t>().begin();
+    }
+    
+    inline array_t::const_iterator var::end() const {
+        if (!is_array())
+            throw bad_access("Not an array.");
+        return _value.get<array_t>().end();
+    }
+    
+    inline bool var::operator==(var const& rhs) const {
+        return _value == rhs._value;
+    }
+    
+    inline bool var::operator!=(var const& rhs) const {
+        return !(*this == rhs);
+        
+    }
+    
+    inline bool var::operator<(var const& rhs) const {
+        return _value < rhs._value;
+    }
+    
+    inline bool var::operator>(var const& rhs) const {
+        return rhs < *this;
+    }
+    
+    inline bool var::operator<=(var const& rhs) const {
+        return !(*this > rhs);
+    }
+    
+    inline bool var::operator>=(var const &rhs) const {
+        return !(*this < rhs);
+    }
 }
 
 #endif

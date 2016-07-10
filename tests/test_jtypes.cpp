@@ -66,6 +66,11 @@ TEST_CASE("jtypes can be initialized from simple types")
     }
     
     {
+        jtypes::var x('x');
+        REQUIRE(x.is_string());
+    }
+    
+    {
         jtypes::var x("hello world");
         REQUIRE(x.is_string());
     }
@@ -237,6 +242,7 @@ TEST_CASE("jtypes should handle coercion to integral types")
     
     REQUIRE(jtypes::var("5").as<long>() == 5);
     REQUIRE(jtypes::var("5.5").as<char>() == (char)5);
+    
 }
 
 TEST_CASE("jtypes should handle coercion to floating point types")
@@ -267,6 +273,25 @@ TEST_CASE("jtypes should handle coercion to string")
     REQUIRE(jtypes::var(false).as<std::string>() == "false");;
     REQUIRE(jtypes::var(-2).as<std::string>() == "-2");
     REQUIRE(jtypes::var({1,2,3}).as<std::string>() == "[1,2,3]");
+    REQUIRE(jtypes::var({'a','b','c'}).as<std::string>() == R"(["a","b","c"])");
+    REQUIRE(jtypes::var("hello world!").as<std::string>() == R"("hello world!")");
+    
+}
+
+TEST_CASE("jtypes keys should be iterable")
+{
+    jtypes::var x = {
+        {"a", 2},
+        {"b", "hello world"},
+        {"c", true}
+    };
+    
+    jtypes::var keys = x.keys();
+    
+    std::sort(keys.begin(), keys.end());
+    
+    REQUIRE(keys.as<std::string>() == R"(["a","b","c"])");
+    REQUIRE(keys == jtypes::var({'a', 'b', 'c'}));
     
 }
 
