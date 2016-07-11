@@ -218,8 +218,6 @@ namespace jtypes {
         template<typename I>
         var(I t, typename details::EnableIfFloatingPointPolicy<I>* unused = 0);
         
-        var(double v);
-        
         var(char v);
         
         var(const char* v);
@@ -573,10 +571,6 @@ namespace jtypes {
     : _value(number_t(static_cast<double>(t))) {
     }
     
-    inline var::var(double v)
-    : _value(number_t(v)) {
-    }
-    
     inline var::var(const char* v)
     : _value(std::string(v)) {
     }
@@ -586,7 +580,7 @@ namespace jtypes {
     }
     
     
-    inline var::var(const std::string &v)
+    inline var::var(const string_t &v)
     : _value(v) {
     }
     
@@ -624,11 +618,6 @@ namespace jtypes {
     }
     
     inline var &var::operator=(bool rhs) {
-        _value = rhs;
-        return *this;
-    }
-    
-    inline var &var::operator=(double rhs) {
         _value = rhs;
         return *this;
     }
