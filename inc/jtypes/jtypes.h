@@ -418,26 +418,20 @@ namespace jtypes {
 
         template<>
         struct coerce_number<bool, void> {
-            bool value = false;
-
             template<class T>
-            void operator()(T v) { value = (v != T(0)); }
+            bool operator()(T v) const { return (v != T(0)); }
         };
         
         template<>
         struct coerce_number<std::string, void> {
-            std::string value;
-            
             template<class T>
-            void operator()(T v) { value = std::to_string(v); }
+            std::string operator()(T v) const { return std::to_string(v); }
         };
 
         template<typename ToType>
         struct coerce_number<ToType, void> {
-            ToType value = ToType(0);
-
             template<class T>
-            void operator()(T v) { value = ToType(v); }
+            ToType operator()(T v) const { return ToType(v); }
         };
 
 
@@ -447,95 +441,86 @@ namespace jtypes {
 
         template<>
         struct coerce<bool, void> {
-            bool value = false;
-
-            void operator()(const undefined_t &v) { value = false; }
-            void operator()(const null_t &v) { value = false; }
-            void operator()(const bool_t &v) { value = v; }
-            void operator()(const string_t &v) { value = !v.empty(); }
-            void operator()(const function_t &v) { value = !v.empty(); }
-            void operator()(const array_t &v) { value = true; }
-            void operator()(const object_t &v) { value = true; }
-            void operator()(const number_t &v) {
+            bool operator()(const undefined_t &v) const { return false; }
+            bool operator()(const null_t &v) const { return false; }
+            bool operator()(const bool_t &v) const { return v; }
+            bool operator()(const string_t &v) const { return !v.empty(); }
+            bool operator()(const function_t &v) const { return !v.empty(); }
+            bool operator()(const array_t &v) const { return true; }
+            bool operator()(const object_t &v) const { return true; }
+            bool operator()(const number_t &v) const {
                 coerce_number<bool> cn;
-                apply_visitor(cn, v);
-                value = cn.value;
+                return apply_visitor(cn, v);
             }
         };
         
         template<>
-        struct coerce<std::string, void> {
-            std::string value;
-            
-            void operator()(const undefined_t &v) { value = "undefined"; }
-            void operator()(const null_t &v) { value = "null"; }
-            void operator()(const bool_t &v) { value = v ? "true" : "false"; }
-            void operator()(const string_t &v) { value = v; }
-            void operator()(const function_t &v) { value = "function"; }
-            void operator()(const array_t &v) {
+        struct coerce<string_t, void> {
+           
+            string_t operator()(const undefined_t &v) const { return "undefined"; }
+            string_t operator()(const null_t &v) const { return "null"; }
+            string_t operator()(const bool_t &v) const { return v ? "true" : "false"; }
+            string_t operator()(const string_t &v) const { return v; }
+            string_t operator()(const function_t &v) const { return "function"; }
+            string_t operator()(const array_t &v) const {
                 std::ostringstream oss;
                 oss << '[';
                 oss << join(v, ",", [](const var &vv) { return vv.as<std::string>();});
                 oss << ']';
-                value = oss.str();
+                return oss.str();
             }
-            void operator()(const object_t &v) {
-                value = "";
+            string_t operator()(const object_t &v) const {
+                return "";
             }
             
-            void operator()(const number_t &v) {
-                coerce_number<std::string> cn;
-                apply_visitor(cn, v);
-                value = cn.value;
+            string_t operator()(const number_t &v) const {
+                coerce_number<string_t> cn;
+                return apply_visitor(cn, v);
             }
         };
 
         template<typename ToType>
         struct coerce<ToType, typename std::enable_if<std::is_integral<ToType>::value>::type > {
-            ToType value = ToType(0);
 
-            void operator()(const bool_t &v) { value = v ? ToType(1) : ToType(0); }
-            void operator()(const string_t &v) {
+            ToType operator()(const bool_t &v) const { return v ? ToType(1) : ToType(0); }
+            ToType operator()(const string_t &v) const {
                 try {
-                    value = ToType(std::stol(v));
+                    return ToType(std::stol(v));
                 } catch (std::exception) {
                     throw bad_access("Failed to coerce type from string to integral type.");
                 }
             }
 
-            void operator()(const number_t &v) {
+            ToType operator()(const number_t &v) const {
                 coerce_number<ToType> cn;
-                apply_visitor(cn, v);
-                value = cn.value;
+                return apply_visitor(cn, v);
             }
 
             template<class T>
-            void operator()(const T &t) {
+            ToType operator()(const T &t) const {
                 throw bad_access("Failed to coerce type to integral type.");
             }
         };
 
         template<typename ToType>
         struct coerce<ToType, typename std::enable_if<std::is_floating_point<ToType>::value>::type > {
-            ToType value = ToType(0);
-
-            void operator()(const bool_t &v) { value = v ? ToType(1) : ToType(0); }
-            void operator()(const string_t &v) {
+ 
+            ToType operator()(const bool_t &v) const { return v ? ToType(1) : ToType(0); }
+            ToType operator()(const string_t &v) const {
                 try {
-                    value = ToType(std::stod(v));
+                    return ToType(std::stod(v));
                 } catch (std::exception) {
                     throw bad_access("Failed to coerce type from string to floating point type.");
                 }
             }
 
-            void operator()(const number_t &v) {
+            ToType operator()(const number_t &v) const {
                 coerce_number<ToType> cn;
-                apply_visitor(cn, v);
-                value = cn.value;
+                return apply_visitor(cn, v);
             }
 
             template<class T>
-            void operator()(const T &t) {
+            ToType operator()(const T &t) const {
                 throw bad_access("Failed to coerce type to integral type.");
             }
         };
@@ -709,8 +694,7 @@ namespace jtypes {
     template<class T>
     inline T var::as() const {
         details::coerce<T> visitor;
-        apply_visitor(visitor, _value);
-        return visitor.value;
+        return apply_visitor(visitor, _value);
     }
     
     template<typename ReturnType, typename... Args>
