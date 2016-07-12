@@ -105,6 +105,12 @@ namespace jtypes {
         
         template<typename T, typename R = void>
         using EnableIfFloatingPointPolicy = typename std::enable_if<std::is_floating_point<T>::value, R>::type;
+        
+        template<typename T, typename R = void>
+        using EnableIfNumberType = typename std::enable_if<std::is_same<T, sint_t>::value || std::is_same<T, uint_t>::value || std::is_same<T, real_t>::value, R>::type;
+        
+        template<typename T, typename R = void>
+        using DisableIfNumberType = typename std::enable_if<!std::is_same<T, sint_t>::value && !std::is_same<T, uint_t>::value && !std::is_same<T, real_t>::value, R>::type;
     }
     
     namespace functions {
@@ -360,26 +366,6 @@ namespace jtypes {
 
     
     namespace details {
-        template <typename _Tp> struct is_type : public std::false_type {};
-        template <>          struct is_type<undefined_t> : public std::true_type {};
-        template <>          struct is_type<null_t> : public std::true_type {};
-        template <>          struct is_type<bool_t> : public std::true_type {};
-        template <>          struct is_type<string_t> : public std::true_type {};
-        template <>          struct is_type<function_t> : public std::true_type {};
-        template <>          struct is_type<array_t> : public std::true_type {};
-        template <>          struct is_type<object_t> : public std::true_type {};
-        template <>          struct is_type<number_t> : public std::true_type {};
-
-
-        template <typename _Tp> struct enum_of {};
-        template <>          struct enum_of<undefined_t> : public std::integral_constant<type, type::undefined> {};
-        template <>          struct enum_of<null_t> : public std::integral_constant<type, type::null> {};
-        template <>          struct enum_of<bool_t> : public std::integral_constant<type, type::boolean> {};
-        template <>          struct enum_of<string_t> : public std::integral_constant<type, type::string> {};
-        template <>          struct enum_of<function_t> : public std::integral_constant<type, type::function> {};
-        template <>          struct enum_of<array_t> : public std::integral_constant<type, type::array> {};
-        template <>          struct enum_of<object_t> : public std::integral_constant<type, type::object> {};
-        template <>          struct enum_of<number_t> : public std::integral_constant<type, type::number> {};
         
         template<typename Range, typename Transform>
         inline std::string
@@ -411,36 +397,57 @@ namespace jtypes {
             typedef decltype(std::begin(input)) range_value;
             return join(input, separator, [](const range_value &v) {return v;});
         }
-        
-        template<typename ToType, typename EnableIfType = void>
-        struct coerce_number {
-        };
 
-        template<>
-        struct coerce_number<bool, void> {
-            template<class T>
-            bool operator()(T v) const { return (v != T(0)); }
-        };
-        
-        template<>
-        struct coerce_number<std::string, void> {
-            template<class T>
-            std::string operator()(T v) const { return std::to_string(v); }
-        };
-
-        template<typename ToType>
-        struct coerce_number<ToType, void> {
-            template<class T>
-            ToType operator()(T v) const { return ToType(v); }
-        };
-
-
-        template<typename ToType, typename EnableIfType = void>
+        template<typename NumberType>
         struct coerce {
+            
+            NumberType operator()(const bool_t &v) const { return v ? NumberType(1) : NumberType(0); }
+            
+            
+            template< typename T = NumberType >
+            NumberType operator()(const string_t &v, EnableIfSignedIntegralPolicy<T> *unused=0) const {
+                try {
+                    return NumberType(std::stol(v));
+                } catch (std::exception) {
+                    throw bad_access("Failed to coerce type from string to integral type.");
+                }
+            }
+            
+            template< typename T = NumberType >
+            NumberType operator()(const string_t &v, EnableIfUnsignedIntegralPolicy<T> *unused=0) const {
+                try {
+                    return NumberType(std::stoul(v));
+                } catch (std::exception) {
+                    throw bad_access("Failed to coerce type from string to integral type.");
+                }
+            }
+            
+            template< typename T = NumberType >
+            NumberType operator()(const string_t &v, EnableIfFloatingPointPolicy<T> *unused=0) const {
+                try {
+                    return NumberType(std::stod(v));
+                } catch (std::exception) {
+                    throw bad_access("Failed to coerce type from string to integral type.");
+                }
+            }
+            
+            template<class T>
+            NumberType operator()(const T &t, EnableIfNumberType<T> *unused=0) const {
+                return NumberType(t); // Static cast needs to be addressed.
+            }
+            
+            NumberType operator()(const number_t &v) const {
+                return apply_visitor(*this, v);
+            }
+            
+            template<class T>
+            NumberType operator()(const T &t, DisableIfNumberType<T> *unused=0) const {
+                throw bad_access("Failed to coerce type to integral type.");
+            }
         };
 
         template<>
-        struct coerce<bool, void> {
+        struct coerce<bool> {
             bool operator()(const undefined_t &v) const { return false; }
             bool operator()(const null_t &v) const { return false; }
             bool operator()(const bool_t &v) const { return v; }
@@ -448,14 +455,17 @@ namespace jtypes {
             bool operator()(const function_t &v) const { return !v.empty(); }
             bool operator()(const array_t &v) const { return true; }
             bool operator()(const object_t &v) const { return true; }
+            
+            template<class T>
+            bool operator()(const T &v, EnableIfNumberType<T> *unused=0) const { return v != T(0); };
+            
             bool operator()(const number_t &v) const {
-                coerce_number<bool> cn;
-                return apply_visitor(cn, v);
+                return apply_visitor(*this, v);
             }
         };
         
         template<>
-        struct coerce<string_t, void> {
+        struct coerce<string_t> {
            
             string_t operator()(const undefined_t &v) const { return "undefined"; }
             string_t operator()(const null_t &v) const { return "null"; }
@@ -473,57 +483,15 @@ namespace jtypes {
                 return "";
             }
             
+            template<class T>
+            string_t operator()(const T &v, EnableIfNumberType<T> *unused=0) const { return std::to_string(v); };
+
+            
             string_t operator()(const number_t &v) const {
-                coerce_number<string_t> cn;
-                return apply_visitor(cn, v);
+                return apply_visitor(*this, v);
             }
         };
 
-        template<typename ToType>
-        struct coerce<ToType, typename std::enable_if<std::is_integral<ToType>::value>::type > {
-
-            ToType operator()(const bool_t &v) const { return v ? ToType(1) : ToType(0); }
-            ToType operator()(const string_t &v) const {
-                try {
-                    return ToType(std::stol(v));
-                } catch (std::exception) {
-                    throw bad_access("Failed to coerce type from string to integral type.");
-                }
-            }
-
-            ToType operator()(const number_t &v) const {
-                coerce_number<ToType> cn;
-                return apply_visitor(cn, v);
-            }
-
-            template<class T>
-            ToType operator()(const T &t) const {
-                throw bad_access("Failed to coerce type to integral type.");
-            }
-        };
-
-        template<typename ToType>
-        struct coerce<ToType, typename std::enable_if<std::is_floating_point<ToType>::value>::type > {
- 
-            ToType operator()(const bool_t &v) const { return v ? ToType(1) : ToType(0); }
-            ToType operator()(const string_t &v) const {
-                try {
-                    return ToType(std::stod(v));
-                } catch (std::exception) {
-                    throw bad_access("Failed to coerce type from string to floating point type.");
-                }
-            }
-
-            ToType operator()(const number_t &v) const {
-                coerce_number<ToType> cn;
-                return apply_visitor(cn, v);
-            }
-
-            template<class T>
-            ToType operator()(const T &t) const {
-                throw bad_access("Failed to coerce type to integral type.");
-            }
-        };
     }
 
     // Implementation
