@@ -365,6 +365,19 @@ TEST_CASE("jtypes should handle coercion to string")
     REQUIRE(jtypes::var({'a','b','c'}).as<std::string>() == "[a,b,c]");
     REQUIRE(jtypes::var("hello world!").as<std::string>() == "hello world!");
     
+    
+    jtypes::var box = {
+        {"dimensions", {
+            {"width", 10},
+            {"height", 12}
+        }},
+        {"tags", {"a", "b", "c"}},
+        {"label", "hello box"}
+    };
+    
+    std::cout << box.as<std::string>() << std::endl;
+    
+    
 }
 
 TEST_CASE("jtypes key and values should be iterable")
@@ -430,6 +443,19 @@ TEST_CASE("jtypes should allow on the fly array creation")
     REQUIRE(xx[2].as<std::string>() == "undefined");
     REQUIRE(xx[3].as<std::string>() == "b");
     
+}
+
+TEST_CASE("jtypes should support default values")
+{
+    jtypes::var x = {
+        {"a", 2},
+        {"b", "hello world"},
+        {"c", true}
+    };
+    
+    REQUIRE((x["a"] | "not-here") == jtypes::var(2));
+    REQUIRE((x["b"] | "not-here") == jtypes::var("hello world"));
+    REQUIRE((x["d"] | "not-here") == jtypes::var("not-here"));
 }
 
 

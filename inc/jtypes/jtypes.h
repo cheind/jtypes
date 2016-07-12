@@ -306,6 +306,9 @@ namespace jtypes {
         template<class T>
         T as() const;
         
+        template<class T>
+        T as(const var &opts) const;
+        
         // Callable interface
         
         template<typename ReturnType, typename... Args>
@@ -315,6 +318,10 @@ namespace jtypes {
         
         var &operator[](const var &key);
         const var &operator[](const var &key) const;
+        
+        // This or default value.
+        
+        const var &operator|(const var &default_value) const;
         
         // Keys accessor
         var keys() const;
@@ -401,6 +408,8 @@ namespace jtypes {
         template<typename NumberType>
         struct coerce {
             
+            var opts;
+            
             NumberType operator()(const bool_t &v) const { return v ? NumberType(1) : NumberType(0); }
             
             
@@ -466,6 +475,7 @@ namespace jtypes {
         
         template<>
         struct coerce<string_t> {
+            var opts;
            
             string_t operator()(const undefined_t &v) const { return "undefined"; }
             string_t operator()(const null_t &v) const { return "null"; }
@@ -480,7 +490,18 @@ namespace jtypes {
                 return oss.str();
             }
             string_t operator()(const object_t &v) const {
-                return "";
+                int level = (opts["level"] | 0).as<int>();
+                const std::string intend(level, ' ');
+                
+                std::ostringstream oss;
+                oss << intend << '{' << std::endl;
+                
+                for (auto &k : v) {
+                    oss << intend << k.first << " : " << k.second.as<std::string>({{"level", level + 2}}) << std::endl;
+                }
+                
+                oss << intend << '}'  << std::endl;
+                return oss.str();
             }
             
             template<class T>
@@ -658,10 +679,20 @@ namespace jtypes {
     inline var::operator bool() const {
         return as<bool>();
     }
+    
+    inline const var &var::operator|(const var &default_value) const {
+        return as<bool>() ? *this : default_value;
+    }
 
     template<class T>
     inline T var::as() const {
         details::coerce<T> visitor;
+        return apply_visitor(visitor, _value);
+    }
+    
+    template<class T>
+    inline T var::as(const var &opts) const {
+        details::coerce<T> visitor = {opts};
         return apply_visitor(visitor, _value);
     }
     
@@ -702,7 +733,9 @@ namespace jtypes {
     }
     
     inline const var &var::operator[](const var &key) const {
-        if (key.is_number() && is_array()) {
+        if (is_undefined()) {
+            return undefined_var();
+        } else if (key.is_number() && is_array()) {
             const array_t &a = _value.get<array_t>();
             size_t idx = key.as<size_t>();
             if (idx < a.size()) {
