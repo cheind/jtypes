@@ -602,6 +602,11 @@ TEST_CASE("jtypes should support comparison")
 
     REQUIRE(o1 == o2);
     REQUIRE(o1 != o3);
+
+    jtypes::var o4 = o3;
+    REQUIRE(o4 == o3);
+    o4["a"] = "abc";
+    REQUIRE(o4 != o3);
 }
 
 
