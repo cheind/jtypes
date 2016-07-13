@@ -483,29 +483,15 @@ namespace jtypes {
             string_t operator()(const string_t &v) const { return v; }
             string_t operator()(const function_t &v) const { return "function"; }
             string_t operator()(const array_t &v) const {
-                std::ostringstream oss;
-                oss << '[';
-                oss << join(v, ",", [](const var &vv) { return vv.as<std::string>();});
-                oss << ']';
-                return oss.str();
+                return join(v, ",", [](const var &vv) { return vv.as<std::string>(); });
             }
-            string_t operator()(const object_t &v) const {
-                int level = (opts["level"] | 0).as<int>();
-                const std::string intend(level, ' ');
-                
-                std::ostringstream oss;
-                oss << intend << '{' << std::endl;
-                
-                for (auto &k : v) {
-                    oss << intend << k.first << " : " << k.second.as<std::string>({{"level", level + 2}}) << std::endl;
-                }
-                
-                oss << intend << '}'  << std::endl;
-                return oss.str();
-            }
+
+            string_t operator()(const object_t &v) const { return "object"; }
             
             template<class T>
-            string_t operator()(const T &v, EnableIfNumberType<T> *unused=0) const { return std::to_string(v); };
+            string_t operator()(const T &v, EnableIfNumberType<T> *unused=0) const { 
+                return std::to_string(v); 
+            };
 
             
             string_t operator()(const number_t &v) const {

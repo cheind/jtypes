@@ -356,27 +356,18 @@ TEST_CASE("jtypes should handle coercion to floating point types")
 
 TEST_CASE("jtypes should handle coercion to string")
 {
+    using jtypes::functions::fnc;
+
     REQUIRE(jtypes::var().as<std::string>() == "undefined");
     REQUIRE(jtypes::var(nullptr).as<std::string>() == "null");
     REQUIRE(jtypes::var(true).as<std::string>() == "true");
     REQUIRE(jtypes::var(false).as<std::string>() == "false");;
     REQUIRE(jtypes::var(-2).as<std::string>() == "-2");
-    REQUIRE(jtypes::var({1,2,3}).as<std::string>() == "[1,2,3]");
-    REQUIRE(jtypes::var({'a','b','c'}).as<std::string>() == "[a,b,c]");
+    REQUIRE(jtypes::var({1,2,3}).as<std::string>() == "1,2,3");
+    REQUIRE(jtypes::var({'a','b','c'}).as<std::string>() == "a,b,c");
     REQUIRE(jtypes::var("hello world!").as<std::string>() == "hello world!");
-    
-    
-    jtypes::var box = {
-        {"dimensions", {
-            {"width", 10},
-            {"height", 12}
-        }},
-        {"tags", {"a", "b", "c"}},
-        {"label", "hello box"}
-    };
-    
-    std::cout << box.as<std::string>() << std::endl;
-    
+    REQUIRE(jtypes::var({{"a", "x"}}).as<std::string>() == "object");
+    REQUIRE(jtypes::var(fnc([]() {return -1;})).as<std::string>() == "function");
     
 }
 
