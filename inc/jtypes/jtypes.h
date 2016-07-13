@@ -865,15 +865,13 @@ namespace jtypes {
     }
     
     inline array_t::iterator var::begin() {
-        if (!is_array())
-            throw bad_access("Not an array.");
-        return _value.get<array_t>().begin();
+        array_t &a = get_variant_or_convert<array_t>();
+        return a.begin();
     }
     
     inline array_t::iterator var::end() {
-        if (!is_array())
-            throw bad_access("Not an array.");
-        return _value.get<array_t>().end();
+        array_t &a = get_variant_or_convert<array_t>();
+        return a.end();
     }
     
     inline array_t::const_iterator var::begin() const {
