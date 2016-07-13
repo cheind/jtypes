@@ -548,7 +548,7 @@ TEST_CASE("jtypes should support default values")
 }
 
 
-TEST_CASE("jtypes should support comparison") 
+TEST_CASE("jtypes should support equality comparison")
 {
     // Numbers 
 
@@ -607,6 +607,27 @@ TEST_CASE("jtypes should support comparison")
     REQUIRE(o4 == o3);
     o4["a"] = "abc";
     REQUIRE(o4 != o3);
+}
+
+TEST_CASE("jtypes should support less-than comparison")
+{
+    REQUIRE(jtypes::var(3) <= 3);
+    REQUIRE(jtypes::var(3) <= 3u);
+    REQUIRE(jtypes::var(3) <= 3.0);
+    REQUIRE(jtypes::var(3) >= 3.0);
+    
+    REQUIRE(jtypes::var(3) < 4);
+    REQUIRE(jtypes::var(-3) < 3u);
+    REQUIRE(jtypes::var(3) < 4.0);
+    
+    
+    jtypes::var a = {jtypes::var(3.5), jtypes::var(2u), jtypes::var(1)};
+    std::sort(a.begin(), a.end());
+    
+    REQUIRE(a[0] == 1);
+    REQUIRE(a[1] == 2);
+    REQUIRE(a[2] == 3.5);
+    
 }
 
 

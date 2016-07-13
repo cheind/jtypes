@@ -514,8 +514,6 @@ namespace jtypes {
                 return (rhs < 0) ? false : (uint_t)rhs == lhs;
             }
 
-            // sin_t == sin_t && uint_t == uint_t handled in generic method
-
             bool operator()(uint_t lhs, real_t rhs) const {
                 return (rhs < 0) ? false : (real_t)lhs == rhs;
             }
@@ -529,6 +527,31 @@ namespace jtypes {
                 return rhs == lhs; 
             }
 
+        };
+        
+        struct less_numbers {
+            
+            bool operator()(sint_t lhs, uint_t rhs) const {
+                return (lhs < 0) ? true : (uint_t)lhs < rhs;
+            }
+            
+            bool operator()(uint_t lhs, sint_t rhs) const {
+                return (rhs < 0) ? true : (uint_t)rhs < lhs;
+            }
+            
+            bool operator()(uint_t lhs, real_t rhs) const {
+                return (rhs < 0.0) ? true : (real_t)lhs < rhs;
+            }
+            
+            bool operator()(real_t lhs, uint_t rhs) const {
+                return (lhs < 0) ? true : (real_t)rhs < lhs;
+            }
+            
+            template<class T, class U>
+            bool operator()(T rhs, U lhs) const {
+                return rhs < lhs;
+            }
+            
         };
 
 
@@ -888,10 +911,7 @@ namespace jtypes {
     
     inline bool var::operator==(var const& rhs) const {
         if (is_number() && rhs.is_number()) {
-            return mapbox::util::apply_visitor(
-                details::equal_numbers(),
-                _value.get<number_t>(),
-                rhs._value.get<number_t>());
+            return mapbox::util::apply_visitor(details::equal_numbers(), _value.get<number_t>(), rhs._value.get<number_t>());
         } else {
             return _value == rhs._value;
         }
@@ -902,7 +922,11 @@ namespace jtypes {
     }
     
     inline bool var::operator<(var const& rhs) const {
-        return _value < rhs._value;
+        if (is_number() && rhs.is_number()) {
+            return mapbox::util::apply_visitor(details::less_numbers(), _value.get<number_t>(), rhs._value.get<number_t>());
+        } else {
+            return _value < rhs._value;
+        }
     }
     
     inline bool var::operator>(var const& rhs) const {
