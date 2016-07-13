@@ -805,7 +805,7 @@ namespace jtypes {
         using value_type = typename std::decay< decltype(*begin) >::type;
 
         array_t a;
-        for (begin; begin != end; ++begin) {
+        for (; begin != end; ++begin) {
             if (std::is_same<value_type, var>::value) {
                 a.push_back(*begin);
             } else {
