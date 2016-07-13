@@ -48,10 +48,7 @@ namespace jtypes {
     typedef uint64_t uint_t;
     typedef double real_t;
 
-    struct undefined_t {
-        bool operator==(const undefined_t &rhs) const { return false; }
-        bool operator<(const undefined_t &rhs) const { return false; }
-    };
+    struct undefined_t {};
     typedef std::nullptr_t null_t;
     typedef bool bool_t;
     typedef variant<int64_t, uint64_t, double> number_t;
@@ -60,12 +57,6 @@ namespace jtypes {
     typedef std::vector<var> array_t;
     typedef std::unordered_map<std::string, var> object_t;
     
-    
-    bool operator<(const object_t &o1, const object_t &o2) { return false; }
-    bool operator==(const object_t &o1, const object_t &o2) { return false; }
-
-
-
     enum class type {
         undefined = 0,
         null,
@@ -240,7 +231,6 @@ namespace jtypes {
         var &operator=(const var &rhs) = default;
         var &operator=(std::nullptr_t);
         var &operator=(bool rhs);
-        var &operator=(double rhs);
         var &operator=(char rhs);
         var &operator=(const char* v);
         var &operator=(const string_t &rhs);
@@ -280,6 +270,9 @@ namespace jtypes {
         var(const std::vector<T> &v);
         
         var(const array_t &v);
+
+        template<typename T>
+        var(T begin, T end, typename std::iterator_traits<T>::iterator_category* = nullptr);        
         
         // Dictionary initializers
         
@@ -334,6 +327,10 @@ namespace jtypes {
         
         array_t::const_iterator begin() const;
         array_t::const_iterator end() const;
+
+        // Array inserters
+
+        void push_back(const var &v);
         
         // Comparison interface
         
@@ -362,6 +359,9 @@ namespace jtypes {
         
         template<class Range>
         void initialize_array(const Range &r);
+
+        template<class Iter>
+        void initialize_array(Iter begin, Iter end);
         
         template<class Range>
         void initialize_object(const Range &r);
@@ -370,6 +370,11 @@ namespace jtypes {
         
         oneof _value;
     };
+
+    bool operator<(const object_t &lhs, const object_t &rhs) { return false; }
+    bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
+    bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
+
 
     
     namespace details {
@@ -499,6 +504,35 @@ namespace jtypes {
             }
         };
 
+        struct equal_numbers {
+
+            bool operator()(sint_t lhs, uint_t rhs) const {
+                return (lhs < 0) ? false : (uint_t)lhs == rhs;
+            }
+
+            bool operator()(uint_t lhs, sint_t rhs) const {
+                return (rhs < 0) ? false : (uint_t)rhs == lhs;
+            }
+
+            // sin_t == sin_t && uint_t == uint_t handled in generic method
+
+            bool operator()(uint_t lhs, real_t rhs) const {
+                return (rhs < 0) ? false : (real_t)lhs == rhs;
+            }
+
+            bool operator()(real_t lhs, uint_t rhs) const {
+                return (lhs < 0) ? false : (real_t)rhs == lhs;
+            }
+
+            template<class T, class U>
+            bool operator()(T rhs, U lhs) const {
+                return rhs == lhs; 
+            }
+
+        };
+
+
+
     }
 
     // Implementation
@@ -562,6 +596,11 @@ namespace jtypes {
     template<typename T>
     inline var::var(const std::vector<T> &v) {
         initialize_array(v);
+    }
+
+    template<typename T>
+    inline var::var(T begin, T end, typename std::iterator_traits<T>::iterator_category*) {
+        initialize_array(begin, end);
     }
     
     inline var::var(const array_t &v)
@@ -743,6 +782,11 @@ namespace jtypes {
             throw bad_access("Key is not number or string.");
         }
     }
+
+    inline void var::push_back(const var &v) {
+        array_t &a = get_variant_or_convert<array_t>();
+        a.push_back(v);
+    }
     
     template<class T>
     inline T &var::get_variant_or_convert() {
@@ -753,14 +797,19 @@ namespace jtypes {
     
     template<class Range>
     inline void var::initialize_array(const Range &r) {
-        using value_type = typename std::decay< decltype(*std::begin(r)) >::type;
-        
+        initialize_array(std::begin(r), std::end(r));
+    }
+
+    template<class Iter>
+    inline void var::initialize_array(Iter begin, Iter end) {
+        using value_type = typename std::decay< decltype(*begin) >::type;
+
         array_t a;
-        for (auto && t : r) {
+        for (begin; begin != end; ++begin) {
             if (std::is_same<value_type, var>::value) {
-                a.push_back(t);
+                a.push_back(*begin);
             } else {
-                a.emplace_back(var(t));
+                a.emplace_back(var(*begin));
             }
         }
         _value = std::move(a);
@@ -840,7 +889,14 @@ namespace jtypes {
     }
     
     inline bool var::operator==(var const& rhs) const {
-        return _value == rhs._value;
+        if (is_number() && rhs.is_number()) {
+            return mapbox::util::apply_visitor(
+                details::equal_numbers(),
+                _value.get<number_t>(),
+                rhs._value.get<number_t>());
+        } else {
+            return _value == rhs._value;
+        }
     }
     
     inline bool var::operator!=(var const& rhs) const {
