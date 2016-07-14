@@ -189,10 +189,7 @@ namespace jtypes {
 
         var(const function_t &v);
         var(function_t &&v);
-        
-        template<typename... Args, typename ReturnType>
-        var(const std::function<ReturnType(Args...)> &v);
-        
+
         // Array initializers
         
         explicit var(const array_t &v);
@@ -224,14 +221,14 @@ namespace jtypes {
         details::EnableIfFloatingPointType<I, var&>
             operator=(I t);
 
-        template<typename... Args, typename ReturnType>
-        var &operator=(const std::function<ReturnType(Args...)> &rhs);
-
         var& operator=(const array_t &rhs);
         var& operator=(array_t &&rhs);
 
         var& operator=(const object_t &rhs);
         var& operator=(object_t &&rhs);
+
+        var &operator=(const function_t &rhs);
+        var &operator=(function_t &&rhs);
         
         // Type queries
         type get_type() const;
@@ -642,12 +639,6 @@ namespace jtypes {
         :_value(std::move(v))
     {
     }
-
-    
-    template<typename... Args, typename ReturnType>
-    inline var::var(const std::function<ReturnType(Args...)> &v)
-    : _value(function_t(v)) {
-    }
    
     inline var::var(const array_t &v)
     :_value(v)
@@ -690,12 +681,6 @@ namespace jtypes {
         return *this;
     }
     
-    template<typename... Args, typename ReturnType>
-    inline var &var::operator=(const std::function<ReturnType(Args...)> &rhs) {
-        _value = function_t(rhs);
-        return *this;
-    }
-    
     inline var &var::operator=(const array_t &rhs) {
         _value = rhs;
         return *this;
@@ -712,6 +697,16 @@ namespace jtypes {
     }
 
     inline var & var::operator=(object_t && rhs) {
+        _value = std::move(rhs);
+        return *this;
+    }
+
+    inline var & var::operator=(const function_t & rhs) {
+        _value = rhs;
+        return *this;
+    }
+
+    inline var & var::operator=(function_t && rhs) {
         _value = std::move(rhs);
         return *this;
     }
