@@ -222,6 +222,11 @@ namespace jtypes {
         var(const string_t &v);
         
         var(std::string &&v);
+
+        // Function initializers
+
+        var(const function_t &v);
+        var(function_t &&v);
         
         template<typename... Args, typename ReturnType>
         var(const std::function<ReturnType(Args...)> &v);
@@ -230,7 +235,6 @@ namespace jtypes {
         
         explicit var(const array_t &v);
         explicit var(array_t &&v);
-
         
         // Dictionary initializers
 
@@ -346,15 +350,6 @@ namespace jtypes {
         template<class T>
         T &get_variant_or_convert();
         
-        template<class Range>
-        void initialize_array(const Range &r);
-
-        template<class Iter>
-        void initialize_array(Iter begin, Iter end);
-        
-        template<class Range>
-        void initialize_object(const Range &r);
-        
         static const var &undefined_var();
         
         oneof _value;
@@ -364,16 +359,8 @@ namespace jtypes {
     bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
     bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
 
-    var arr(std::initializer_list<var> v);
 
-    template<typename T>
-    var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category* = nullptr);
-
-    var obj(std::initializer_list< std::pair<const string_t, var> > v);
-    
-
-    
-    namespace details {
+    namespace creators {
 
         template<class Range>
         inline var create_array(const Range &r) {
@@ -403,8 +390,27 @@ namespace jtypes {
             }
             return var(std::move(o));
         }
-        
-        
+
+        inline var arr(std::initializer_list<var> v) {
+            return create_array(v);
+        }
+
+        template<typename T>
+        inline var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category * = nullptr) {
+            return create_array(begin, end);
+        }
+
+        inline var obj(std::initializer_list<std::pair<const string_t, var>> v) {
+            return create_object(v);
+        }
+
+
+    }
+    
+    
+    namespace details {
+
+       
         template<typename Range, typename Transform>
         inline std::string
         join(const Range &input, const std::string& separator, Transform trans)
@@ -631,6 +637,15 @@ namespace jtypes {
     : _value(std::move(v)) {
     }
 
+    inline var::var(const function_t & v) 
+        :_value(v)
+    {}
+
+    inline var::var(function_t && v) 
+        :_value(std::move(v))
+    {
+    }
+
     
     template<typename... Args, typename ReturnType>
     inline var::var(const std::function<ReturnType(Args...)> &v)
@@ -652,20 +667,7 @@ namespace jtypes {
     inline var::var(object_t && v) 
         :_value(std::move(v))
     {}
-
-    inline var arr(std::initializer_list<var> v) {
-        return details::create_array(v);
-    }
-
-    inline var obj(std::initializer_list<std::pair<const string_t, var>> v) {
-        return details::create_object(v);
-    }
-
-    template<typename T>
-    inline var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category *) {
-        return details::create_array(begin, end);
-    }
-    
+   
     inline var &var::operator=(std::nullptr_t) {
         _value = nullptr;
         return *this;
