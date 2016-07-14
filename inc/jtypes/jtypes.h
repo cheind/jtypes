@@ -89,13 +89,13 @@ namespace jtypes {
     
     namespace details {
         template<typename T, typename R = void>
-        using EnableIfSignedIntegralPolicy = typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, R>::type;
+        using EnableIfSignedIntegralType = typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, R>::type;
         
         template<typename T, typename R = void>
-        using EnableIfUnsignedIntegralPolicy = typename std::enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value, R>::type;
+        using EnableIfUnsignedIntegralType = typename std::enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value, R>::type;
         
         template<typename T, typename R = void>
-        using EnableIfFloatingPointPolicy = typename std::enable_if<std::is_floating_point<T>::value, R>::type;
+        using EnableIfFloatingPointType = typename std::enable_if<std::is_floating_point<T>::value, R>::type;
         
         template<typename T, typename R = void>
         using EnableIfNumberType = typename std::enable_if<std::is_same<T, sint_t>::value || std::is_same<T, uint_t>::value || std::is_same<T, real_t>::value, R>::type;
@@ -207,13 +207,13 @@ namespace jtypes {
         var(bool v);
         
         template<typename I>
-        var(I t, typename details::EnableIfSignedIntegralPolicy<I>* unused = 0);
+        var(I t, typename details::EnableIfSignedIntegralType<I>* unused = 0);
         
         template<typename I>
-        var(I t, typename details::EnableIfUnsignedIntegralPolicy<I>* unused = 0);
+        var(I t, typename details::EnableIfUnsignedIntegralType<I>* unused = 0);
         
         template<typename I>
-        var(I t, typename details::EnableIfFloatingPointPolicy<I>* unused = 0);
+        var(I t, typename details::EnableIfFloatingPointType<I>* unused = 0);
         
         var(char v);
         
@@ -226,57 +226,46 @@ namespace jtypes {
         template<typename... Args, typename ReturnType>
         var(const std::function<ReturnType(Args...)> &v);
         
-        // Assignments
+        // Array initializers
         
+        explicit var(const array_t &v);
+        explicit var(array_t &&v);
+
+        
+        // Dictionary initializers
+
+        explicit var(const object_t &v);
+        explicit var(object_t &&v);
+
+        // Assignments
+
         var &operator=(const var &rhs) = default;
         var &operator=(std::nullptr_t);
         var &operator=(bool rhs);
         var &operator=(char rhs);
         var &operator=(const char* v);
         var &operator=(const string_t &rhs);
-        
+
         template<typename I>
-        details::EnableIfSignedIntegralPolicy<I, var&>
-        operator=(I t);
-        
+        details::EnableIfSignedIntegralType<I, var&>
+            operator=(I t);
+
         template<typename I>
-        details::EnableIfUnsignedIntegralPolicy<I, var&>
-        operator=(I t);
-        
+        details::EnableIfUnsignedIntegralType<I, var&>
+            operator=(I t);
+
         template<typename I>
-        details::EnableIfFloatingPointPolicy<I, var&>
-        operator=(I t);
+        details::EnableIfFloatingPointType<I, var&>
+            operator=(I t);
 
         template<typename... Args, typename ReturnType>
         var &operator=(const std::function<ReturnType(Args...)> &rhs);
-        
-        template<typename T>
-        var& operator=(std::initializer_list<T> rhs);
-        
-        template<typename T>
-        var& operator=(const std::vector<T> &rhs);
-        
+
         var& operator=(const array_t &rhs);
-        
-        var& operator=(std::initializer_list< std::pair<string_t, var> > rhs);
+        var& operator=(array_t &&rhs);
 
-        
-        // Array initializers
-        
-        template<typename T>
-        var(std::initializer_list<T> v);
-        
-        template<typename T>
-        var(const std::vector<T> &v);
-        
-        var(const array_t &v);
-
-        template<typename T>
-        var(T begin, T end, typename std::iterator_traits<T>::iterator_category* = nullptr);        
-        
-        // Dictionary initializers
-        
-        var(std::initializer_list< std::pair<string_t, var> > v);
+        var& operator=(const object_t &rhs);
+        var& operator=(object_t &&rhs);
         
         // Type queries
         type get_type() const;
@@ -375,9 +364,46 @@ namespace jtypes {
     bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
     bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
 
+    var arr(std::initializer_list<var> v);
+
+    template<typename T>
+    var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category* = nullptr);
+
+    var obj(std::initializer_list< std::pair<const string_t, var> > v);
+    
 
     
     namespace details {
+
+        template<class Range>
+        inline var create_array(const Range &r) {
+            return create_array(std::begin(r), std::end(r));
+        }
+
+        template<class Iter>
+        inline var create_array(Iter begin, Iter end) {
+            using value_type = typename std::decay< decltype(*begin) >::type;
+
+            array_t a;
+            for (; begin != end; ++begin) {
+                if (std::is_same<value_type, var>::value) {
+                    a.push_back(*begin);
+                } else {
+                    a.emplace_back(var(*begin));
+                }
+            }
+            return var(std::move(a));
+        }
+
+        template<class Range>
+        inline var create_object(const Range &r) {
+            object_t o;
+            for (auto && t : r) {
+                o.insert(object_t::value_type(t.first, t.second));
+            }
+            return var(std::move(o));
+        }
+        
         
         template<typename Range, typename Transform>
         inline std::string
@@ -419,7 +445,7 @@ namespace jtypes {
             
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, EnableIfSignedIntegralPolicy<T> *unused=0) const {
+            NumberType operator()(const string_t &v, EnableIfSignedIntegralType<T> *unused=0) const {
                 try {
                     return NumberType(std::stol(v));
                 } catch (std::exception) {
@@ -428,7 +454,7 @@ namespace jtypes {
             }
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, EnableIfUnsignedIntegralPolicy<T> *unused=0) const {
+            NumberType operator()(const string_t &v, EnableIfUnsignedIntegralType<T> *unused=0) const {
                 try {
                     return NumberType(std::stoul(v));
                 } catch (std::exception) {
@@ -437,7 +463,7 @@ namespace jtypes {
             }
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, EnableIfFloatingPointPolicy<T> *unused=0) const {
+            NumberType operator()(const string_t &v, EnableIfFloatingPointType<T> *unused=0) const {
                 try {
                     return NumberType(std::stod(v));
                 } catch (std::exception) {
@@ -574,17 +600,17 @@ namespace jtypes {
     }
     
     template<typename I>
-    inline var::var(I t, typename details::EnableIfSignedIntegralPolicy<I>* unused)
+    inline var::var(I t, typename details::EnableIfSignedIntegralType<I>* unused)
     : _value(number_t(static_cast<int64_t>(t))) {
     }
     
     template<typename I>
-    inline var::var(I t, typename details::EnableIfUnsignedIntegralPolicy<I>* unused)
+    inline var::var(I t, typename details::EnableIfUnsignedIntegralType<I>* unused)
     : _value(number_t(static_cast<uint64_t>(t))) {
     }
     
     template<typename I>
-    inline var::var(I t, typename details::EnableIfFloatingPointPolicy<I>* unused)
+    inline var::var(I t, typename details::EnableIfFloatingPointType<I>* unused)
     : _value(number_t(static_cast<double>(t))) {
     }
     
@@ -610,28 +636,34 @@ namespace jtypes {
     inline var::var(const std::function<ReturnType(Args...)> &v)
     : _value(function_t(v)) {
     }
-
-    template<typename T>
-    inline var::var(std::initializer_list<T> v) {
-        initialize_array(v);
-    }
-    
-    template<typename T>
-    inline var::var(const std::vector<T> &v) {
-        initialize_array(v);
-    }
-
-    template<typename T>
-    inline var::var(T begin, T end, typename std::iterator_traits<T>::iterator_category*) {
-        initialize_array(begin, end);
-    }
-    
+   
     inline var::var(const array_t &v)
     :_value(v)
     {}
-    
-    inline var::var(std::initializer_list< std::pair<string_t, var> > v) {
-        initialize_object(v);
+
+    inline var::var(array_t &&v)
+        : _value(std::move(v)) 
+    {}
+
+    inline var::var(const object_t & v) 
+        :_value(v)
+    {}
+
+    inline var::var(object_t && v) 
+        :_value(std::move(v))
+    {}
+
+    inline var arr(std::initializer_list<var> v) {
+        return details::create_array(v);
+    }
+
+    inline var obj(std::initializer_list<std::pair<const string_t, var>> v) {
+        return details::create_object(v);
+    }
+
+    template<typename T>
+    inline var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category *) {
+        return details::create_array(begin, end);
     }
     
     inline var &var::operator=(std::nullptr_t) {
@@ -665,44 +697,43 @@ namespace jtypes {
         return *this;
     }
     
-    template<typename T>
-    inline var &var::operator=(std::initializer_list<T> rhs) {
-        initialize_array(rhs);
-        return *this;
-    }
-
-    template<typename T>
-    inline var &var::operator=(const std::vector<T> &rhs) {
-        initialize_array(rhs);
-        return *this;
-    }
-    
     inline var &var::operator=(const array_t &rhs) {
         _value = rhs;
         return *this;
     }
-    
-    inline var &var::operator=(std::initializer_list< std::pair<string_t, var> > rhs) {
-        initialize_object(rhs);
+
+    inline var & var::operator=(array_t && rhs) {
+        _value = std::move(rhs);
+        return *this;
+    }
+
+    inline var & var::operator=(const object_t & rhs) {
+        _value = rhs;
+        return *this;
+    }
+
+    inline var & var::operator=(object_t && rhs) {
+        _value = std::move(rhs);
         return *this;
     }
     
+    
     template<typename I>
-    inline details::EnableIfSignedIntegralPolicy<I, var&>
+    inline details::EnableIfSignedIntegralType<I, var&>
     var::operator=(I t) {
         _value = number_t(static_cast<int64_t>(t));
         return *this;
     }
     
     template<typename I>
-    inline details::EnableIfUnsignedIntegralPolicy<I, var&>
+    inline details::EnableIfUnsignedIntegralType<I, var&>
     var::operator=(I t) {
         _value = number_t(static_cast<uint64_t>(t));
         return *this;
     }
     
     template<typename I>
-    inline details::EnableIfFloatingPointPolicy<I, var&>
+    inline details::EnableIfFloatingPointType<I, var&>
     var::operator=(I t) {
         _value = number_t(static_cast<double>(t));
         return *this;
@@ -817,37 +848,7 @@ namespace jtypes {
             _value = T();
         return _value.get<T>();
     }
-    
-    template<class Range>
-    inline void var::initialize_array(const Range &r) {
-        initialize_array(std::begin(r), std::end(r));
-    }
-
-    template<class Iter>
-    inline void var::initialize_array(Iter begin, Iter end) {
-        using value_type = typename std::decay< decltype(*begin) >::type;
-
-        array_t a;
-        for (; begin != end; ++begin) {
-            if (std::is_same<value_type, var>::value) {
-                a.push_back(*begin);
-            } else {
-                a.emplace_back(var(*begin));
-            }
-        }
-        _value = std::move(a);
-    }
-    
-    template<class Range>
-    inline void var::initialize_object(const Range &r) {
         
-        object_t o;
-        for (auto && t : r) {
-            o.insert(object_t::value_type(t.first, t.second));
-        }
-        _value = std::move(o);
-    }
-    
     
     inline const var &var::undefined_var() {
         static var u;

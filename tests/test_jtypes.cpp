@@ -226,33 +226,7 @@ TEST_CASE("jtypes can be assigned from callables")
 TEST_CASE("jtypes can be initialized from arrays")
 {
     {
-        jtypes::var x({1,2,3});
-        REQUIRE(x.is_array());
-        REQUIRE(x[0] == 1);
-        REQUIRE(x[1] == 2);
-        REQUIRE(x[2] == 3);
-    }
-    
-    {
-        jtypes::var x({jtypes::var(1),jtypes::var(2),jtypes::var(3)});
-        REQUIRE(x.is_array());
-        REQUIRE(x[0] == 1);
-        REQUIRE(x[1] == 2);
-        REQUIRE(x[2] == 3);
-    }
-    
-    {
-        std::vector<int> v = {1, 2, 3};
-        jtypes::var x(v);
-        REQUIRE(x.is_array());
-        REQUIRE(x[0] == 1);
-        REQUIRE(x[1] == 2);
-        REQUIRE(x[2] == 3);
-    }
-    
-    {
-        jtypes::array_t v = {1, 2, 3};
-        jtypes::var x(v);
+        jtypes::var x = jtypes::arr({ 1,2,3 });
         REQUIRE(x.is_array());
         REQUIRE(x[0] == 1);
         REQUIRE(x[1] == 2);
@@ -260,8 +234,16 @@ TEST_CASE("jtypes can be initialized from arrays")
     }
 
     {
-        std::vector<int> v = { 1, 2, 3 };
-        jtypes::var x(v.begin(), v.end());
+        jtypes::var x = jtypes::arr({ 1u,"hello world", true });
+        REQUIRE(x.is_array());
+        REQUIRE(x[0] == 1u);
+        REQUIRE(x[1] == "hello world");
+        REQUIRE(x[2] == true);
+    }
+    
+    {
+        std::vector<int> v = {1, 2, 3};
+        jtypes::var x = jtypes::arr(v.begin(), v.end());
         REQUIRE(x.is_array());
         REQUIRE(x[0] == 1);
         REQUIRE(x[1] == 2);
@@ -273,52 +255,41 @@ TEST_CASE("jtypes can be assigned from arrays")
 {
     {
         jtypes::var x;
-        x = {1,2,3};
+        x = jtypes::arr({1,2,3});
         REQUIRE(x.is_array());
         REQUIRE(x[0] == 1);
         REQUIRE(x[1] == 2);
         REQUIRE(x[2] == 3);
     }
-    
+
     {
         jtypes::var x;
-        x = {jtypes::var(1),jtypes::var(2),jtypes::var(3)};
+        x = jtypes::arr({ 1, true, "hello" });
         REQUIRE(x.is_array());
         REQUIRE(x[0] == 1);
-        REQUIRE(x[1] == 2);
-        REQUIRE(x[2] == 3);
-    }
-    
-    {
-        std::vector<int> v = {1, 2, 3};
-        jtypes::var x;
-        x = v;
-        REQUIRE(x.is_array());
-        REQUIRE(x[0] == 1);
-        REQUIRE(x[1] == 2);
-        REQUIRE(x[2] == 3);
-        REQUIRE(x[2] != 4);
+        REQUIRE(x[1] == true);
+        REQUIRE(x[2] == "hello");
     }
 }
 
 TEST_CASE("jtypes can be initialized from dictionaries")
 {
     {
-        jtypes::var x = {
+        jtypes::var x = jtypes::obj({
             {"a", 10},
             {"b", "hello world"}
-        };
+        });
         REQUIRE(x.is_object());
         REQUIRE(x["a"] == 10);
         REQUIRE(x["b"] == "hello world");
     }
     
     {
-        jtypes::var x = {
+        jtypes::var x = jtypes::obj({
             {"a", jtypes::var(10)},
             {"b", jtypes::var("hello world")},
             {"c", jtypes::var(nullptr)}
-        };
+        });
         REQUIRE(x.is_object());
         REQUIRE(x["a"] == 10);
         REQUIRE(x["b"] == "hello world");
@@ -326,10 +297,10 @@ TEST_CASE("jtypes can be initialized from dictionaries")
     }
     
     {
-        jtypes::var x = {
+        jtypes::var x = jtypes::obj({
             {"a", 10},
-            {"b", {{"c", "hello world"}}}
-        };
+            {"b", jtypes::obj({{"c", "hello world"}})}
+        });
         REQUIRE(x.is_object());
         REQUIRE(x["a"] == 10);
         REQUIRE(x["b"]["c"] == "hello world");
@@ -340,10 +311,10 @@ TEST_CASE("jtypes can be assigned from dictionaries")
 {
     {
         jtypes::var x;
-        x = {
+        x = jtypes::obj({
             {"a", 10},
             {"b", "hello world"}
-        };
+        });
         REQUIRE(x.is_object());
         REQUIRE(x["a"] == 10);
         REQUIRE(x["b"] == "hello world");
@@ -351,11 +322,11 @@ TEST_CASE("jtypes can be assigned from dictionaries")
     
     {
         jtypes::var x;
-        x = {
+        x = jtypes::obj({
             {"a", jtypes::var(10)},
             {"b", jtypes::var("hello world")},
             {"c", jtypes::var(nullptr)}
-        };
+        });
         REQUIRE(x.is_object());
         REQUIRE(x["a"] == 10);
         REQUIRE(x["b"] == "hello world");
@@ -381,8 +352,8 @@ TEST_CASE("jtypes should be convertible to bool")
 
     REQUIRE(jtypes::var(jtypes::functions::fnc([]() {return true; })));
     
-    REQUIRE(jtypes::var({1,2,3}));
-    REQUIRE(jtypes::var({{"a", 10}}));
+    REQUIRE(jtypes::var(jtypes::arr({1,2,3})));
+    REQUIRE(jtypes::var(jtypes::obj({{"a", 10}})));
 }
 
 TEST_CASE("jtypes should handle coercion to integral types")
@@ -390,8 +361,8 @@ TEST_CASE("jtypes should handle coercion to integral types")
     
     REQUIRE_THROWS_AS(jtypes::var().as<int>(), jtypes::bad_access);
     REQUIRE_THROWS_AS(jtypes::var(nullptr).as<int>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var({1,2,3}).as<int>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var({{"a",1}}).as<int>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var(jtypes::arr({1,2,3})).as<int>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var(jtypes::obj({{"a",1}})).as<int>(), jtypes::bad_access);
     
     REQUIRE(jtypes::var(true).as<int>() == 1);
     REQUIRE(jtypes::var(false).as<int>() == 0);
@@ -413,8 +384,8 @@ TEST_CASE("jtypes should handle coercion to floating point types")
     
     REQUIRE_THROWS_AS(jtypes::var().as<float>(), jtypes::bad_access);
     REQUIRE_THROWS_AS(jtypes::var(nullptr).as<float>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var({1,2,3}).as<double>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var({{"a",1}}).as<float>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var(jtypes::arr({1,2,3})).as<double>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var(jtypes::obj({{"a",1}})).as<float>(), jtypes::bad_access);
     
     REQUIRE(jtypes::var(true).as<float>() == 1.f);
     REQUIRE(jtypes::var(false).as<float>() == 0.f);
@@ -437,41 +408,41 @@ TEST_CASE("jtypes should handle coercion to string")
     REQUIRE(jtypes::var(true).as<std::string>() == "true");
     REQUIRE(jtypes::var(false).as<std::string>() == "false");;
     REQUIRE(jtypes::var(-2).as<std::string>() == "-2");
-    REQUIRE(jtypes::var({1,2,3}).as<std::string>() == "1,2,3");
-    REQUIRE(jtypes::var({'a','b','c'}).as<std::string>() == "a,b,c");
+    REQUIRE(jtypes::var(jtypes::arr({1,2,3})).as<std::string>() == "1,2,3");
+    REQUIRE(jtypes::var(jtypes::arr({'a','b','c'})).as<std::string>() == "a,b,c");
     REQUIRE(jtypes::var("hello world!").as<std::string>() == "hello world!");
-    REQUIRE(jtypes::var({{"a", "x"}}).as<std::string>() == "object");
+    REQUIRE(jtypes::var(jtypes::obj({{"a", "x"}})).as<std::string>() == "object");
     REQUIRE(jtypes::var(fnc([]() {return -1;})).as<std::string>() == "function");
     
 }
 
 TEST_CASE("jtypes key and values should be iterable")
 {
-    jtypes::var x = {
+    jtypes::var x = jtypes::obj({
         {"a", 2},
         {"b", "hello world"},
         {"c", true}
-    };
+    });
     
     jtypes::var keys = x.keys();
     jtypes::var values = x.values();
     
-    REQUIRE(keys == jtypes::var({"a", "b", "c"}));
-    REQUIRE(values == jtypes::var({2, "hello world", true}));
+    REQUIRE(keys == jtypes::arr({"a", "b", "c"}));
+    REQUIRE(values == jtypes::arr({2, "hello world", true}));
     
     // holds also for arrays
     
-    x = jtypes::var({"a", "b", "c"});
+    x = jtypes::arr({"a", "b", "c"});
     keys = x.keys();
     values = x.values();
     
-    REQUIRE(keys == jtypes::var({"0", "1", "2"}));
-    REQUIRE(values == jtypes::var({"a", "b", "c"}));
+    REQUIRE(keys == jtypes::arr({"0", "1", "2"}));
+    REQUIRE(values == jtypes::arr({"a", "b", "c"}));
 }
 
 TEST_CASE("jtypes array iterators can be accessed") {
     
-    jtypes::var x = { 5, 10, 20, 7 };
+    jtypes::var x = jtypes::arr({ 5, 10, 20, 7 });
 
     const int unsorted[] = { 5, 10, 20, 7 };
 
@@ -536,11 +507,11 @@ TEST_CASE("jtypes should allow on the fly array creation")
 
 TEST_CASE("jtypes should support default values")
 {
-    jtypes::var x = {
+    jtypes::var x = jtypes::obj({
         {"a", 2},
         {"b", "hello world"},
         {"c", true}
-    };
+    });
     
     REQUIRE((x["a"] | "not-here") == jtypes::var(2));
     REQUIRE((x["b"] | "not-here") == jtypes::var("hello world"));
@@ -592,13 +563,13 @@ TEST_CASE("jtypes should support equality comparison")
 
     // Arrays
 
-    REQUIRE(jtypes::var({1u, 2u, 3u}) == jtypes::var({1, 2, 3}));
+    REQUIRE(jtypes::var(jtypes::arr({1u, 2u, 3u})) == jtypes::var(jtypes::arr({1, 2, 3})));
 
     // Objects
 
-    jtypes::var o1 = { {"a", "hello world"}, {"b", {{"c", 3}}} };
-    jtypes::var o2 = { { "a", "hello world" },{ "b",{ { "c", 3 } } } };
-    jtypes::var o3 = { { "a", "hello world" },{ "b",{ { "c", 4 } } } };
+    jtypes::var o1 = jtypes::obj({ {"a", "hello world"}, {"b", jtypes::obj({{"c", 3}})} });
+    jtypes::var o2 = jtypes::obj({ { "a", "hello world" },{ "b", jtypes::obj({ { "c", 3 } }) } });
+    jtypes::var o3 = jtypes::obj({ { "a", "hello world" },{ "b", jtypes::obj({ { "c", 4 } }) } });
 
     REQUIRE(o1 == o2);
     REQUIRE(o1 != o3);
@@ -639,7 +610,7 @@ TEST_CASE("jtypes should support less-than comparison")
     REQUIRE(less(jtypes::var(2u), jtypes::var(3.5)));
     REQUIRE(!less(jtypes::var(3.5), jtypes::var(2u)));
         
-    jtypes::var a = {jtypes::var(3.5), jtypes::var(2u), jtypes::var(1)};
+    jtypes::var a = jtypes::arr({ 3.5, 2u, 1 });
     std::sort(a.begin(), a.end());
     
     REQUIRE(a[0] == 1);
