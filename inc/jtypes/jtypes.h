@@ -321,11 +321,6 @@ namespace jtypes {
 
     namespace creators {
 
-        template<class Range>
-        inline var create_array(const Range &r) {
-            return create_array(std::begin(r), std::end(r));
-        }
-
         template<class Iter>
         inline var create_array(Iter begin, Iter end) {
             using value_type = typename std::decay< decltype(*begin) >::type;
@@ -339,6 +334,11 @@ namespace jtypes {
                 }
             }
             return var(std::move(a));
+        }
+        
+        template<class Range>
+        inline var create_array(const Range &r) {
+            return create_array(std::begin(r), std::end(r));
         }
 
         template<class Range>
