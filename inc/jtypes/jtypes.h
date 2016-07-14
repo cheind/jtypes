@@ -536,15 +536,15 @@ namespace jtypes {
             }
             
             bool operator()(uint_t lhs, sint_t rhs) const {
-                return (rhs < 0) ? true : (uint_t)rhs < lhs;
+                return (rhs < 0) ? false : lhs < (uint_t)rhs;
             }
             
             bool operator()(uint_t lhs, real_t rhs) const {
-                return (rhs < 0.0) ? true : (real_t)lhs < rhs;
+                return (rhs < 0.0) ? false : (real_t)lhs < rhs;
             }
             
             bool operator()(real_t lhs, uint_t rhs) const {
-                return (lhs < 0) ? true : (real_t)rhs < lhs;
+                return (lhs < 0) ? true : lhs < (real_t)rhs;
             }
             
             template<class T, class U>

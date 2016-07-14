@@ -619,8 +619,26 @@ TEST_CASE("jtypes should support less-than comparison")
     REQUIRE(jtypes::var(3) < 4);
     REQUIRE(jtypes::var(-3) < 3u);
     REQUIRE(jtypes::var(3) < 4.0);
-    
-    
+
+    // Strict weak ordering
+
+    // Irreflexivity
+    REQUIRE((jtypes::var(3) < jtypes::var(3)) == false);
+    REQUIRE((jtypes::var(3.5) < jtypes::var(3.5)) == false);
+
+    // Antisymmetry
+    REQUIRE((jtypes::var(3) < jtypes::var(3.5)) == true);
+    REQUIRE((jtypes::var(3.5) < jtypes::var(3)) == false);
+
+    //Transitivity
+    REQUIRE((jtypes::var(3) < jtypes::var(3.5)) == true);
+    REQUIRE((jtypes::var(3.5) < jtypes::var(4)) == true);
+    REQUIRE((jtypes::var(3) < jtypes::var(4)) == true);
+
+    std::less<jtypes::var> less;
+    REQUIRE(less(jtypes::var(2u), jtypes::var(3.5)));
+    REQUIRE(!less(jtypes::var(3.5), jtypes::var(2u)));
+        
     jtypes::var a = {jtypes::var(3.5), jtypes::var(2u), jtypes::var(1)};
     std::sort(a.begin(), a.end());
     
