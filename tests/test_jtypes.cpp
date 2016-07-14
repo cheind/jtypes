@@ -155,7 +155,7 @@ struct functionoid_overload {
 
 TEST_CASE("jtypes can be initialized from callables") 
 {
-    using jtypes::functions::fnc;
+    using jtypes::creators::fnc;
     
     {
         jtypes::var x(fnc(func));
@@ -213,7 +213,7 @@ TEST_CASE("jtypes can be initialized from callables")
 
 TEST_CASE("jtypes can be assigned from callables")
 {
-    using jtypes::functions::fnc;
+    using jtypes::creators::fnc;
     
     jtypes::var x;
     
@@ -350,6 +350,7 @@ TEST_CASE("jtypes should be convertible to bool")
 {
     using jtypes::creators::arr;
     using jtypes::creators::obj;
+    using jtypes::creators::fnc;
 
     REQUIRE(!jtypes::var());
     REQUIRE(!jtypes::var(nullptr));
@@ -365,7 +366,7 @@ TEST_CASE("jtypes should be convertible to bool")
     REQUIRE(jtypes::var("abc"));
     REQUIRE(!jtypes::var(""));
 
-    REQUIRE(jtypes::var(jtypes::functions::fnc([]() {return true; })));
+    REQUIRE(jtypes::var(fnc([]() {return true; })));
     
     REQUIRE(jtypes::var(arr({1,2,3})));
     REQUIRE(jtypes::var(obj({{"a", 10}})));
@@ -420,7 +421,7 @@ TEST_CASE("jtypes should handle coercion to floating point types")
 
 TEST_CASE("jtypes should handle coercion to string")
 {
-    using jtypes::functions::fnc;
+    using jtypes::creators::fnc;
     using jtypes::creators::arr;
     using jtypes::creators::obj;
 

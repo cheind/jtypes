@@ -40,7 +40,7 @@ namespace jtypes {
 
     class var;
     
-    namespace functions {
+    namespace details {
         struct function_holder;
     }
    
@@ -53,7 +53,7 @@ namespace jtypes {
     typedef bool bool_t;
     typedef variant<int64_t, uint64_t, double> number_t;
     typedef std::string string_t;
-    typedef functions::function_holder function_t;
+    typedef details::function_holder function_t;
     typedef std::vector<var> array_t;
     typedef std::unordered_map<std::string, var> object_t;
     
@@ -102,95 +102,57 @@ namespace jtypes {
         
         template<typename T, typename R = void>
         using DisableIfNumberType = typename std::enable_if<!std::is_same<T, sint_t>::value && !std::is_same<T, uint_t>::value && !std::is_same<T, real_t>::value, R>::type;
-    }
-    
-    namespace functions {
-        
-        //plain function pointers
-        template<typename... Args, typename ReturnType>
-        auto fnc(ReturnType(*p)(Args...))
-        -> std::function<ReturnType(Args...)> {
-            return{ p };
-        }
-        
-        //nonconst member function pointers
-        template<typename... Args, typename ReturnType, typename ClassType>
-        auto fnc(ReturnType(ClassType::*p)(Args...))
-        -> std::function<ReturnType(Args...)> {
-            return{ p };
-        }
-        
-        //const member function pointers
-        template<typename... Args, typename ReturnType, typename ClassType>
-        auto fnc(ReturnType(ClassType::*p)(Args...) const)
-        -> std::function<ReturnType(Args...)> {
-            return{ p };
-        }
-        
-        //qualified functionoids
-        template<typename FirstArg, typename... Args, class T>
-        auto fnc(T&& t)
-        -> std::function<decltype(t(std::declval<FirstArg>(), std::declval<Args>()...))(FirstArg, Args...)> {
-            return{ std::forward<T>(t) };
-        }
-        
-        //unqualified functionoids try to deduce the signature of `T::operator()` and use that.
-        template<class T>
-        auto fnc(T&& t)
-        -> decltype(::jtypes::functions::fnc(&std::remove_reference<T>::type::operator())) {
-            return{ std::forward<T>(t) };
-        }
-        
+
         struct function_wrapper_base {
             virtual ~function_wrapper_base() = default;
             virtual bool empty() const = 0;
         };
-        
+
         template<typename ReturnType, typename... Args>
         struct function_wrapper : function_wrapper_base {
             std::function<ReturnType(Args...)> f;
-            
+
             function_wrapper(const std::function<ReturnType(Args...)> &f_)
-            :f(f_) {
+                :f(f_) {
             }
-            
+
             bool empty() const override {
                 return !(bool)f;
             }
         };
-        
+
         struct function_holder {
             std::shared_ptr<function_wrapper_base> ptr;
-            
+
             template<typename ReturnType, typename... Args>
             function_holder(const std::function<ReturnType(Args...)> &f)
-            :ptr(new function_wrapper<ReturnType, Args...>(f)) {
+                :ptr(new function_wrapper<ReturnType, Args...>(f)) {
             }
-            
+
             template<typename ReturnType, typename... Args>
             ReturnType invoke(Args&&... args) const {
                 function_wrapper<ReturnType, typename std::decay<Args>::type...> * g =
-                dynamic_cast< function_wrapper<ReturnType, typename std::decay<Args>::type...> *>(ptr.get());
-                
+                    dynamic_cast< function_wrapper<ReturnType, typename std::decay<Args>::type...> *>(ptr.get());
+
                 if (g == nullptr) {
                     throw bad_access("Failed function to signature requested by parameters.");;
                 }
-                
+
                 return g->f(std::forward<Args>(args)...);
             }
-            
+
             bool empty() const {
                 return !ptr || ptr->empty();
             }
-            
+
             bool operator==(const function_holder &rhs) const {
                 return false;
             }
-            
+
             bool operator<(const function_holder &rhs) const {
                 return false;
             }
-            
+
         };
     }
 
@@ -404,7 +366,42 @@ namespace jtypes {
             return create_object(v);
         }
 
+        //plain function pointers
+        template<typename... Args, typename ReturnType>
+        auto fnc(ReturnType(*p)(Args...))
+            -> std::function<ReturnType(Args...)> {
+            return{ p };
+        }
 
+        //nonconst member function pointers
+        template<typename... Args, typename ReturnType, typename ClassType>
+        auto fnc(ReturnType(ClassType::*p)(Args...))
+            -> std::function<ReturnType(Args...)> {
+            return{ p };
+        }
+
+        //const member function pointers
+        template<typename... Args, typename ReturnType, typename ClassType>
+        auto fnc(ReturnType(ClassType::*p)(Args...) const)
+            -> std::function<ReturnType(Args...)> {
+            return{ p };
+        }
+
+        //qualified functionoids
+        template<typename FirstArg, typename... Args, class T>
+        auto fnc(T&& t)
+            -> std::function<decltype(t(std::declval<FirstArg>(), std::declval<Args>()...))(FirstArg, Args...)> {
+            return{ std::forward<T>(t) };
+        }
+
+        //unqualified functionoids try to deduce the signature of `T::operator()` and use that.
+        template<class T>
+        auto fnc(T&& t)
+            -> decltype(::jtypes::creators::fnc(&std::remove_reference<T>::type::operator())) {
+            return{ std::forward<T>(t) };
+        }
+
+       
     }
     
     
