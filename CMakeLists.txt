@@ -15,7 +15,6 @@ endif()
 set(LIB_INCLUDE_DIRS
 	inc
 	vendor/variant
-    vendor/any_function
 )
 
 set(LIB_SOURCES
