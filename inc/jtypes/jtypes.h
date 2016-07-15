@@ -662,6 +662,15 @@ namespace jtypes {
         }
     }
     
+    inline var from_json(std::istream &is) {
+        try {
+            json j = json::parse(is);
+            return details::from_json(j);
+        } catch (std::exception &e) {
+            throw syntax_error(e.what());
+        }
+    }
+    
 #endif
     
     inline var arr(std::initializer_list<var> v) {
@@ -690,6 +699,15 @@ namespace jtypes {
         os << "var";
 #endif
         return os;
+    }
+    
+    std::istream &operator>>(std::istream &is, var &v) {
+#ifndef JTYPES_NO_JSON
+        v = from_json(is);
+#else
+        throw syntax_error("no json parser available.");
+#endif
+        return is;
     }
 
     // Implementation

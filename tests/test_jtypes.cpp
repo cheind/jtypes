@@ -686,10 +686,24 @@ TEST_CASE("jtypes should support json")
     });
     
     REQUIRE(jtypes::to_json(x) == R"({"a":2.1,"b":"hello world","c":true,"d":{"e":null},"f":[1,2,3,"hello"]})");
-    
     REQUIRE(jtypes::from_json(jtypes::to_json(x)) == x);
     
-    REQUIRE_THROWS_AS(jtypes::from_json("dasdad"), jtypes::syntax_error);
+    // Overloaded output / input operators
+    
+    const std::string s = jtypes::to_json(x);
+    
+    std::istringstream iss(s);
+    jtypes::var y;
+    
+    REQUIRE_NOTHROW(iss >> y);
+    REQUIRE(x == y);
+    
+    std::ostringstream oss;
+    oss << y;
+    REQUIRE(s == oss.str());
+    
+    // Invalid JSON
+    REQUIRE_THROWS_AS(jtypes::from_json("dasda"), jtypes::syntax_error);
 
 }
 
