@@ -15,6 +15,7 @@ endif()
 set(LIB_INCLUDE_DIRS
 	inc
 	vendor/variant
+    vendor/nlohmann-json/src
 )
 
 set(LIB_SOURCES
