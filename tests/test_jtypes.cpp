@@ -13,6 +13,8 @@ of MIT license. See the LICENSE file for details.
 
 #include <jtypes/jtypes.h>
 
+
+
 TEST_CASE("jtypes can be initialized from simple types")
 {
     {
@@ -139,88 +141,82 @@ TEST_CASE("jtypes can be assigned from simple types")
     REQUIRE(x != "hdaello");
 }
 
+std::string free_func(const std::string &str) {
+    return str;
+}
 
-int func(int x, int y, int z) { return x + y + z; }
-int overloaded(char x, int y, int z) { return x + y + z; }
-int overloaded(int x, int y, int z) { return x + y + z; }
-struct functionoid {
-    int operator()(int x, int y, int z) { return x + y + z; }
-    int const_call(int x) const { return x;}
-};
-struct functionoid_overload {
-    int operator()(int x, int y, int z) { return x + y + z; }
-    int operator()(char x, int y, int z) { return x + y + z; }
-};
+struct functor {
+    std::string operator()(const std::string &str) const {
+        return str;
+    }
 
+    std::string moveable(std::string &&str) const {
+        return std::move(str);
+    }
+};
 
 TEST_CASE("jtypes can be initialized from callables") 
 {
     using jtypes::creators::fnc;
+
+    using sig = std::string(const std::string&);
     
     {
-        jtypes::var x(fnc(func));
+        jtypes::var x(fnc<sig>(&free_func));
         REQUIRE(x.is_function());
-        REQUIRE(x.invoke<int>(1,2,3) == 6);
+        REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
 
     {
-        jtypes::var x(fnc<int, int, int>(overloaded));
+        functor f;
+        jtypes::var x(fnc<sig>(f));
         REQUIRE(x.is_function());
-        REQUIRE(x.invoke<int>(1, 2, 3) == 6);
+        REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
 
     {
-        jtypes::var x(fnc<char, int, int>(overloaded));
+        jtypes::var x(fnc<sig>([](const std::string &str) { return str; }));
         REQUIRE(x.is_function());
-        REQUIRE(x.invoke<int>((char)1, 2, 3) == 6);
-    }
-
-    {
-        functionoid o;
-        jtypes::var x(fnc(o));
-        REQUIRE(x.is_function());
-        REQUIRE(x.invoke<int>(1, 2, 3) == 6);
+        REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
 
     {
         using namespace std::placeholders;
-        functionoid o;
-        jtypes::var x(fnc<int>(std::bind(&functionoid::const_call, o, _1)));
+        functor f;
+        auto b = std::bind(&functor::operator(), f, _1);
+
+        jtypes::var x(fnc<sig>(b));
         REQUIRE(x.is_function());
-        REQUIRE(x.invoke<int>(4) == 4);
+        REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
 
     {
-        jtypes::var x(fnc([](int x, int y) { return x + y; }));
-        REQUIRE(x.is_function());
-        REQUIRE(x.invoke<int>(4,4) == 8);
+        using namespace std::placeholders;
+        
+        using msig = std::string(std::string&&);
+
+        functor f;
+        auto b = std::bind(&functor::moveable, f, _1);
+
+        std::string input = "hello world";
+        jtypes::var x(fnc<msig>(b));
+        REQUIRE(x.invoke<msig>(std::move(input)) == "hello world");
+        REQUIRE(input.empty());
     }
 
-    {
-        functionoid f;
-        std::function<int(int, int, int)> ff = f;
-        jtypes::var x(fnc(ff));
-        REQUIRE(x.is_function());
-        REQUIRE(x.invoke<int>(1, 2, 3) == 6);
-    }
-
-
-    {
-        jtypes::var x = fnc([](int a, int b) {return a + b; });
-        REQUIRE(x.invoke<int>(3, 4) == 7);
-    }
+   
 }
 
 TEST_CASE("jtypes can be assigned from callables")
 {
+    
     using jtypes::creators::fnc;
-    
-    jtypes::var x;
-    
-    x = fnc([](int x, int y) { return x + y; });
+    using sig = int(int, int);
+   
+    jtypes::var x;    
+    x = fnc<sig>([](int x, int y) { return x + y; });
     REQUIRE(x.is_function());
-    REQUIRE(x.invoke<int>(1, 2) == 3);
-    
+    REQUIRE(x.invoke<sig>(1, 2) == 3);
 }
 
 TEST_CASE("jtypes can be initialized from arrays")
@@ -366,7 +362,9 @@ TEST_CASE("jtypes should be convertible to bool")
     REQUIRE(jtypes::var("abc"));
     REQUIRE(!jtypes::var(""));
 
-    REQUIRE(jtypes::var(fnc([]() {return true; })));
+    using sig = bool(void);
+    REQUIRE(jtypes::var(fnc<sig>([]() {return true; })));
+    REQUIRE(!jtypes::var(fnc<sig>()));
     
     REQUIRE(jtypes::var(arr({1,2,3})));
     REQUIRE(jtypes::var(obj({{"a", 10}})));
@@ -434,7 +432,9 @@ TEST_CASE("jtypes should handle coercion to string")
     REQUIRE(jtypes::var(arr({'a','b','c'})).as<std::string>() == "a,b,c");
     REQUIRE(jtypes::var("hello world!").as<std::string>() == "hello world!");
     REQUIRE(jtypes::var(obj({{"a", "x"}})).as<std::string>() == "object");
-    REQUIRE(jtypes::var(fnc([]() {return -1;})).as<std::string>() == "function");
+
+    using sig = int(void);
+    REQUIRE(jtypes::var(fnc<sig>([]() {return -1;})).as<std::string>() == "function");
     
 }
 

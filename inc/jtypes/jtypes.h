@@ -41,7 +41,7 @@ namespace jtypes {
     class var;
     
     namespace details {
-        struct function_holder;
+        class fnc_holder;
     }
    
     typedef int64_t sint_t;
@@ -53,7 +53,7 @@ namespace jtypes {
     typedef bool bool_t;
     typedef variant<int64_t, uint64_t, double> number_t;
     typedef std::string string_t;
-    typedef details::function_holder function_t;
+    typedef details::fnc_holder function_t;
     typedef std::vector<var> array_t;
     typedef std::unordered_map<std::string, var> object_t;
     
@@ -103,56 +103,83 @@ namespace jtypes {
         template<typename T, typename R = void>
         using DisableIfNumberType = typename std::enable_if<!std::is_same<T, sint_t>::value && !std::is_same<T, uint_t>::value && !std::is_same<T, real_t>::value, R>::type;
 
-        struct function_wrapper_base {
-            virtual ~function_wrapper_base() = default;
+
+        struct type_erasure_base {
+            virtual ~type_erasure_base() = default;
+        };
+
+        struct fnc_erasure_base : type_erasure_base {
             virtual bool empty() const = 0;
         };
 
-        template<typename ReturnType, typename... Args>
-        struct function_wrapper : function_wrapper_base {
-            std::function<ReturnType(Args...)> f;
+        template<typename Sig>
+        struct fnc_wrapper : fnc_erasure_base {
+            std::function<Sig> f;
 
-            function_wrapper(const std::function<ReturnType(Args...)> &f_)
-                :f(f_) {
+            fnc_wrapper(std::function<Sig> && _f)
+                :f(std::forward<std::function<Sig>>(_f)) {
             }
 
-            bool empty() const override {
-                return !(bool)f;
-            }
+            bool empty() const { return !f; }
         };
 
-        struct function_holder {
-            std::shared_ptr<function_wrapper_base> ptr;
+        template<class>
+        struct result_of_sig;
 
-            template<typename ReturnType, typename... Args>
-            function_holder(const std::function<ReturnType(Args...)> &f)
-                :ptr(new function_wrapper<ReturnType, Args...>(f)) {
+        template <typename R, typename... Args>
+        struct result_of_sig<R(Args...)> { using type = R; };
+
+        class fnc_holder {
+        public:
+            template<typename Sig>
+            fnc_holder(std::function<Sig> && f)
+                :ptr(new fnc_wrapper<Sig>(std::forward<std::function<Sig>>(f))) {
             }
 
-            template<typename ReturnType, typename... Args>
-            ReturnType invoke(Args&&... args) const {
-                function_wrapper<ReturnType, typename std::decay<Args>::type...> * g =
-                    dynamic_cast< function_wrapper<ReturnType, typename std::decay<Args>::type...> *>(ptr.get());
-
+            template<typename Sig>
+            std::function<Sig> as() const {
+                fnc_wrapper<Sig> * g = dynamic_cast<fnc_wrapper<Sig> *>(ptr.get());
                 if (g == nullptr) {
-                    throw bad_access("Failed function to signature requested by parameters.");;
+                    return std::function<Sig>();
+                } else {
+                    return g->f;
                 }
+            }
 
-                return g->f(std::forward<Args>(args)...);
+            template<typename R, typename ...Args>
+            R invoke(Args && ... args) const {
+                std::function<R(Args...)> f = as<R(Args...)>();
+                if (f) {
+                    return f(std::forward<Args>(args)...);
+                } else {
+                    throw std::bad_cast();
+                }
+            }
+
+            template<typename Sig, typename ...Args>
+            typename result_of_sig<Sig>::type invoke_with_signature(Args && ... args) const {
+                const auto &f = as<Sig>();
+                if (f) {
+                    return f(std::forward<Args>(args)...);
+                } else {
+                    throw std::bad_cast();
+                }
             }
 
             bool empty() const {
                 return !ptr || ptr->empty();
             }
 
-            bool operator==(const function_holder &rhs) const {
+            bool operator==(const fnc_holder &rhs) const {
                 return false;
             }
 
-            bool operator<(const function_holder &rhs) const {
+            bool operator<(const fnc_holder &rhs) const {
                 return false;
             }
 
+        private:
+            std::shared_ptr<fnc_erasure_base> ptr;
         };
     }
 
@@ -248,16 +275,14 @@ namespace jtypes {
         
         explicit operator bool() const;
         
-        template<class T>
-        T as() const;
-        
-        template<class T>
-        T as(const var &opts) const;
+        template<typename T>
+        T as(const var &opts = undefined_var()) const;
         
         // Callable interface
-        
-        template<typename ReturnType, typename... Args>
-        ReturnType invoke(Args&&... args) const;
+
+        template<typename Sig, typename ...Args>
+        typename details::result_of_sig<Sig>::type
+        invoke(Args && ... args) const;
         
         // Array / Object accessors
         
@@ -293,6 +318,7 @@ namespace jtypes {
         bool operator<=(var const& rhs) const;
         bool operator>=(var const &rhs) const;
         
+        static const var &undefined_var();
         
     private:
         typedef variant<
@@ -306,10 +332,8 @@ namespace jtypes {
         object_t
         > oneof;
         
-        template<class T>
+        template<typename T>
         T &get_variant_or_convert();
-        
-        static const var &undefined_var();
         
         oneof _value;
     };
@@ -321,12 +345,12 @@ namespace jtypes {
 
     namespace creators {
 
-        template<class Range>
+        template<typename Range>
         inline var create_array(const Range &r) {
             return create_array(std::begin(r), std::end(r));
         }
 
-        template<class Iter>
+        template<typename Iter>
         inline var create_array(Iter begin, Iter end) {
             using value_type = typename std::decay< decltype(*begin) >::type;
 
@@ -341,7 +365,7 @@ namespace jtypes {
             return var(std::move(a));
         }
 
-        template<class Range>
+        template<typename Range>
         inline var create_object(const Range &r) {
             object_t o;
             for (auto && t : r) {
@@ -363,42 +387,10 @@ namespace jtypes {
             return create_object(v);
         }
 
-        //plain function pointers
-        template<typename... Args, typename ReturnType>
-        auto fnc(ReturnType(*p)(Args...))
-            -> std::function<ReturnType(Args...)> {
-            return{ p };
+        template<typename Sig>
+        inline var fnc(std::function<Sig> && f = std::function<Sig>()) {
+            return var(function_t(std::forward<std::function<Sig>>(f)));
         }
-
-        //nonconst member function pointers
-        template<typename... Args, typename ReturnType, typename ClassType>
-        auto fnc(ReturnType(ClassType::*p)(Args...))
-            -> std::function<ReturnType(Args...)> {
-            return{ p };
-        }
-
-        //const member function pointers
-        template<typename... Args, typename ReturnType, typename ClassType>
-        auto fnc(ReturnType(ClassType::*p)(Args...) const)
-            -> std::function<ReturnType(Args...)> {
-            return{ p };
-        }
-
-        //qualified functionoids
-        template<typename FirstArg, typename... Args, class T>
-        auto fnc(T&& t)
-            -> std::function<decltype(t(std::declval<FirstArg>(), std::declval<Args>()...))(FirstArg, Args...)> {
-            return{ std::forward<T>(t) };
-        }
-
-        //unqualified functionoids try to deduce the signature of `T::operator()` and use that.
-        template<class T>
-        auto fnc(T&& t)
-            -> decltype(::jtypes::creators::fnc(&std::remove_reference<T>::type::operator())) {
-            return{ std::forward<T>(t) };
-        }
-
-       
     }
     
     
@@ -428,7 +420,7 @@ namespace jtypes {
             return result.str();
         }
         
-        template< typename Range>
+        template<typename Range>
         inline std::string
         join(const Range &input, const std::string& separator)
         {
@@ -488,6 +480,8 @@ namespace jtypes {
 
         template<>
         struct coerce<bool> {
+            var opts;
+
             bool operator()(const undefined_t &v) const { return false; }
             bool operator()(const null_t &v) const { return false; }
             bool operator()(const bool_t &v) const { return v; }
@@ -756,27 +750,19 @@ namespace jtypes {
     inline const var &var::operator|(const var &default_value) const {
         return as<bool>() ? *this : default_value;
     }
-
-    template<class T>
-    inline T var::as() const {
-        details::coerce<T> visitor;
-        return apply_visitor(visitor, _value);
-    }
     
-    template<class T>
+    template<typename T>
     inline T var::as(const var &opts) const {
         details::coerce<T> visitor = {opts};
         return apply_visitor(visitor, _value);
     }
     
-    template<typename ReturnType, typename... Args>
-    inline ReturnType var::invoke(Args&&... args) const
+    template<typename Sig, typename... Args>
+    inline typename details::result_of_sig<Sig>::type var::invoke(Args&&... args) const
     {
         if (is_function()) {
             const function_t &f = _value.get<function_t>();
-            if (!f.empty()) {
-                return f.invoke<ReturnType>(std::forward<Args>(args)...);
-            }
+            return f.invoke_with_signature<Sig>(std::forward<Args>(args)...);
         }
         
         throw bad_access("Not a function or not callable.");
@@ -836,7 +822,7 @@ namespace jtypes {
         a.push_back(v);
     }
     
-    template<class T>
+    template<typename T>
     inline T &var::get_variant_or_convert() {
         if (!_value.is<T>())
             _value = T();
