@@ -675,5 +675,22 @@ TEST_CASE("jtypes should support less-than comparison")
     
 }
 
+TEST_CASE("jtypes should support json")
+{
+    jtypes::var x = jtypes::obj({
+        {"a", 2.1},
+        {"b", "hello world"},
+        {"c", true},
+        {"d", jtypes::obj({{"e", nullptr}})},
+        {"f", jtypes::arr({1,2,3,"hello"})}
+    });
+    
+    REQUIRE(jtypes::to_json(x) == R"({"a":2.1,"b":"hello world","c":true,"d":{"e":null},"f":[1,2,3,"hello"]})");
+    
+    REQUIRE(jtypes::from_json(jtypes::to_json(x)) == x);
+    
+    REQUIRE_THROWS_AS(jtypes::from_json("dasdad"), jtypes::syntax_error);
+
+}
 
 

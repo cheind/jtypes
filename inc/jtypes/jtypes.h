@@ -22,6 +22,12 @@
 #pragma warning(pop) 
 #endif
 
+#ifndef JTYPES_NO_JSON
+
+#include "json.hpp"
+
+#endif
+
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -80,6 +86,19 @@ namespace jtypes {
         }
         
         explicit bad_access(const char* what_arg)
+        : logic_error(what_arg) {
+        }
+        
+    };
+    
+    class syntax_error : public std::logic_error {
+        
+    public:
+        explicit syntax_error(const std::string& what_arg)
+        : logic_error(what_arg) {
+        }
+        
+        explicit syntax_error(const char* what_arg)
         : logic_error(what_arg) {
         }
         
@@ -552,7 +571,98 @@ namespace jtypes {
             }
             return var(std::move(o));
         }
+        
+#ifndef JTYPES_NO_JSON
+        
+        using json = nlohmann::json;
+        
+        inline json to_json(const var &v) {
+            switch(v.get_type()) {
+                case type::array: {
+                    json j = json::array();
+                    for (auto && vv : v) {
+                        j.push_back(to_json(vv));
+                    }
+                    return j;
+                }
+                case type::boolean:
+                    return v.as<bool>();
+                case type::number:
+                    if (v.is_signed_integral()) return v.as<sint_t>();
+                    else if (v.is_unsigned_integral()) return v.as<uint_t>();
+                    else return v.as<real_t>();
+                case type::string:
+                    return v.as<std::string>();
+                case type::object: {
+                    json j = json::object();
+                    for (auto && k : v.keys()) {
+                        j[k.as<std::string>()] = to_json(v[k]);
+                    }
+                    return j;
+                }
+                default:
+                    return nullptr;
+            }
+        }
+        
+        inline var from_json(const json &j) {
+            switch (j.type()) {
+                case json::value_t::array: {
+                    var v;
+                    for (auto iter = j.begin(); iter != j.end(); ++iter) {
+                        v.push_back(from_json(*iter));
+                    }
+                    return v;
+                }
+                case json::value_t::boolean:
+                    return j.get<bool>();
+                case json::value_t::null:
+                    return nullptr;
+                case json::value_t::number_float:
+                    return j.get<real_t>();
+                case json::value_t::number_integer:
+                    return j.get<sint_t>();
+                case json::value_t::number_unsigned:
+                    return j.get<uint_t>();
+                case json::value_t::object: {
+                    var v;
+                    for (auto iter = j.begin(); iter != j.end(); ++iter) {
+                        v[iter.key()] = from_json(iter.value());
+                    }
+                    return v;
+                }
+                case json::value_t::string:
+                    return j.get<std::string>();
+                case json::value_t::discarded:
+                    return var();
+            }
+        }
+#endif
+        
     }
+    
+#ifndef JTYPES_NO_JSON
+    
+    inline std::string to_json(const var &v) {
+        return details::to_json(v).dump();
+    }
+    
+    inline std::string to_json(const var &v, int intend) {
+        return details::to_json(v).dump(intend);
+    }
+    
+    inline var from_json(const std::string &str) {
+        using json = nlohmann::json;
+        
+        try {
+            json j = json::parse(str);
+            return details::from_json(j);
+        } catch (std::exception &e) {
+            throw syntax_error(e.what());
+        }
+    }
+    
+#endif
     
     inline var arr(std::initializer_list<var> v) {
         return details::create_array(v);
