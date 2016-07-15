@@ -294,7 +294,8 @@ namespace jtypes {
         
         // Getters with coercion
         
-        explicit operator bool() const;
+        template<class T>
+        explicit operator T() const;
         
         template<typename T>
         typename std::enable_if<!std::is_function<T>::value, T>::type as(const var &opts = undefined_var()) const;
@@ -873,6 +874,8 @@ namespace jtypes {
     }
     
     
+    
+    
     inline type var::get_type() const { return (type)_value.which(); }
     
     inline bool_t var::is_undefined() const { return _value.which() == (int)type::undefined; }
@@ -888,8 +891,10 @@ namespace jtypes {
     inline bool_t var::is_unsigned_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::unsigned_integral; }
     inline bool_t var::is_real() const { return is_number() && _value.get<number_t>().which() == (int)number_type::real; }
     
-    inline var::operator bool() const {
-        return as<bool>();
+    
+    template<class T>
+    inline var::operator T() const {
+        return as<T>();
     }
     
     inline const var &var::operator|(const var &default_value) const {

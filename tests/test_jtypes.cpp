@@ -14,7 +14,6 @@ of MIT license. See the LICENSE file for details.
 #include <jtypes/jtypes.h>
 
 
-
 TEST_CASE("jtypes can be initialized from simple types")
 {
     {
@@ -359,11 +358,13 @@ TEST_CASE("jtypes can be assigned from dictionaries")
     }
 }
 
-TEST_CASE("jtypes should be convertible to bool")
+TEST_CASE("jtypes should be convertible to primitive types")
 {
     using jtypes::arr;
     using jtypes::obj;
     using jtypes::fnc;
+    
+    // boolean
 
     REQUIRE(!jtypes::var());
     REQUIRE(!jtypes::var(nullptr));
@@ -385,6 +386,13 @@ TEST_CASE("jtypes should be convertible to bool")
     
     REQUIRE(jtypes::var(arr({1,2,3})));
     REQUIRE(jtypes::var(obj({{"a", 10}})));
+    
+    // ints and floats
+    
+    REQUIRE(int(jtypes::var(1)) == 1);
+    REQUIRE(uint(jtypes::var(1)) == 1u);
+    REQUIRE(float(jtypes::var(1)) == 1.f);
+    
 }
 
 TEST_CASE("jtypes should handle coercion to integral types")
