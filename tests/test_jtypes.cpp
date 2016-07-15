@@ -675,7 +675,7 @@ TEST_CASE("jtypes should support less-than comparison")
     
 }
 
-TEST_CASE("jtypes should support json")
+TEST_CASE("jtypes should support JSON")
 {
     jtypes::var x = jtypes::obj({
         {"a", 2.1},
