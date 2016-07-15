@@ -157,7 +157,7 @@ struct functor {
 
 TEST_CASE("jtypes can be initialized from callables") 
 {
-    using jtypes::creators::fnc;
+    using jtypes::fnc;
 
     using sig = std::string(const std::string&);
     
@@ -210,7 +210,7 @@ TEST_CASE("jtypes can be initialized from callables")
 TEST_CASE("jtypes allows extracting function objects")
 {
     
-    using jtypes::creators::fnc;
+    using jtypes::fnc;
     using sig = int(int, int);
    
     jtypes::var x;    
@@ -227,7 +227,7 @@ TEST_CASE("jtypes allows extracting function objects")
 TEST_CASE("jtypes can be assigned from callables")
 {
     
-    using jtypes::creators::fnc;
+    using jtypes::fnc;
     using sig = int(int, int);
     
     jtypes::var x;
@@ -238,8 +238,8 @@ TEST_CASE("jtypes can be assigned from callables")
 
 TEST_CASE("jtypes can be initialized from arrays")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     {
         jtypes::var x = arr({ 1,2,3 });
@@ -269,8 +269,8 @@ TEST_CASE("jtypes can be initialized from arrays")
 
 TEST_CASE("jtypes can be assigned from arrays")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     {
         jtypes::var x;
@@ -293,8 +293,8 @@ TEST_CASE("jtypes can be assigned from arrays")
 
 TEST_CASE("jtypes can be initialized from dictionaries")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     {
         jtypes::var x = obj({
@@ -331,8 +331,8 @@ TEST_CASE("jtypes can be initialized from dictionaries")
 
 TEST_CASE("jtypes can be assigned from dictionaries")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     {
         jtypes::var x;
@@ -361,9 +361,9 @@ TEST_CASE("jtypes can be assigned from dictionaries")
 
 TEST_CASE("jtypes should be convertible to bool")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
-    using jtypes::creators::fnc;
+    using jtypes::arr;
+    using jtypes::obj;
+    using jtypes::fnc;
 
     REQUIRE(!jtypes::var());
     REQUIRE(!jtypes::var(nullptr));
@@ -389,8 +389,8 @@ TEST_CASE("jtypes should be convertible to bool")
 
 TEST_CASE("jtypes should handle coercion to integral types")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     REQUIRE_THROWS_AS(jtypes::var().as<int>(), jtypes::bad_access);
     REQUIRE_THROWS_AS(jtypes::var(nullptr).as<int>(), jtypes::bad_access);
@@ -414,8 +414,8 @@ TEST_CASE("jtypes should handle coercion to integral types")
 
 TEST_CASE("jtypes should handle coercion to floating point types")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     REQUIRE_THROWS_AS(jtypes::var().as<float>(), jtypes::bad_access);
     REQUIRE_THROWS_AS(jtypes::var(nullptr).as<float>(), jtypes::bad_access);
@@ -436,9 +436,9 @@ TEST_CASE("jtypes should handle coercion to floating point types")
 
 TEST_CASE("jtypes should handle coercion to string")
 {
-    using jtypes::creators::fnc;
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::fnc;
+    using jtypes::arr;
+    using jtypes::obj;
 
     REQUIRE(jtypes::var().as<std::string>() == "undefined");
     REQUIRE(jtypes::var(nullptr).as<std::string>() == "null");
@@ -457,8 +457,8 @@ TEST_CASE("jtypes should handle coercion to string")
 
 TEST_CASE("jtypes key and values should be iterable")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     jtypes::var x = obj({
         {"a", 2},
@@ -485,8 +485,8 @@ TEST_CASE("jtypes key and values should be iterable")
 TEST_CASE("jtypes array iterators can be accessed") 
 {
     
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
 
     jtypes::var x = arr({ 5, 10, 20, 7 });
@@ -554,8 +554,8 @@ TEST_CASE("jtypes should allow on the fly array creation")
 
 TEST_CASE("jtypes should support default values")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     jtypes::var x = obj({
         {"a", 2},
@@ -571,8 +571,8 @@ TEST_CASE("jtypes should support default values")
 
 TEST_CASE("jtypes should support equality comparison")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     // Numbers 
 
@@ -635,8 +635,8 @@ TEST_CASE("jtypes should support equality comparison")
 
 TEST_CASE("jtypes should support less-than comparison")
 {
-    using jtypes::creators::arr;
-    using jtypes::creators::obj;
+    using jtypes::arr;
+    using jtypes::obj;
 
     REQUIRE(jtypes::var(3) <= 3);
     REQUIRE(jtypes::var(3) <= 3u);

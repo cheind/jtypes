@@ -31,8 +31,6 @@
 #include <stdexcept>
 #include <functional>
 
-#include <iostream>
-
 
 namespace jtypes {
 
@@ -344,56 +342,6 @@ namespace jtypes {
     bool operator<(const object_t &lhs, const object_t &rhs) { return false; }
     bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
     bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
-
-
-    namespace creators {
-        template<class Iter>
-        inline var create_array(Iter begin, Iter end) {
-            using value_type = typename std::decay< decltype(*begin) >::type;
-
-            array_t a;
-            for (; begin != end; ++begin) {
-                if (std::is_same<value_type, var>::value) {
-                    a.push_back(*begin);
-                } else {
-                    a.emplace_back(var(*begin));
-                }
-            }
-            return var(std::move(a));
-        }
-        
-        template<class Range>
-        inline var create_array(const Range &r) {
-            return create_array(std::begin(r), std::end(r));
-        }
-
-        template<typename Range>
-        inline var create_object(const Range &r) {
-            object_t o;
-            for (auto && t : r) {
-                o.insert(object_t::value_type(t.first, t.second));
-            }
-            return var(std::move(o));
-        }
-
-        inline var arr(std::initializer_list<var> v) {
-            return create_array(v);
-        }
-
-        template<typename T>
-        inline var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category * = nullptr) {
-            return create_array(begin, end);
-        }
-
-        inline var obj(std::initializer_list<std::pair<const string_t, var>> v) {
-            return create_object(v);
-        }
-
-        template<typename Sig>
-        inline var fnc(std::function<Sig> && f = std::function<Sig>()) {
-            return var(function_t(std::forward<std::function<Sig>>(f)));
-        }
-    }
     
     
     namespace details {
@@ -575,9 +523,53 @@ namespace jtypes {
             }
             
         };
-
-
-
+        
+        template<class Iter>
+        inline var create_array(Iter begin, Iter end) {
+            using value_type = typename std::decay< decltype(*begin) >::type;
+            
+            array_t a;
+            for (; begin != end; ++begin) {
+                if (std::is_same<value_type, var>::value) {
+                    a.push_back(*begin);
+                } else {
+                    a.emplace_back(var(*begin));
+                }
+            }
+            return var(std::move(a));
+        }
+        
+        template<class Range>
+        inline var create_array(const Range &r) {
+            return create_array(std::begin(r), std::end(r));
+        }
+        
+        template<typename Range>
+        inline var create_object(const Range &r) {
+            object_t o;
+            for (auto && t : r) {
+                o.insert(object_t::value_type(t.first, t.second));
+            }
+            return var(std::move(o));
+        }
+    }
+    
+    inline var arr(std::initializer_list<var> v) {
+        return details::create_array(v);
+    }
+    
+    template<typename T>
+    inline var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category * = nullptr) {
+        return details::create_array(begin, end);
+    }
+    
+    inline var obj(std::initializer_list<std::pair<const string_t, var>> v) {
+        return details::create_object(v);
+    }
+    
+    template<typename Sig>
+    inline var fnc(std::function<Sig> && f = std::function<Sig>()) {
+        return var(function_t(std::forward<std::function<Sig>>(f)));
     }
 
     // Implementation
