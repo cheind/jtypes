@@ -704,6 +704,25 @@ TEST_CASE("jtypes should support JSON")
     
     // Invalid JSON
     REQUIRE_THROWS_AS(jtypes::from_json("dasda"), jtypes::syntax_error);
+    
+    
+    // Undefined and function objects are stripped when converted to json.
+    jtypes::var u = jtypes::obj({
+        {"a", jtypes::var()},
+        {"b", jtypes::arr({1,jtypes::var(),2})},
+        {"c", jtypes::fnc<int(int)>()}
+    });
+
+    std::stringstream str;
+    str << u;
+    
+    jtypes::var parsed;
+    str >> parsed;
+
+    REQUIRE(parsed == jtypes::obj({
+        {"b", jtypes::arr({1,2}) }
+    }));
+    
 
 }
 

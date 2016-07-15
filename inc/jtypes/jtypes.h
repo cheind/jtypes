@@ -578,12 +578,16 @@ namespace jtypes {
         
 #ifndef JTYPES_NO_JSON
         
-        inline json to_json(const var &v) {
+        inline json to_json(const var &v, bool *should_discard = 0) {
+            if (should_discard) *should_discard = false;
+            
             switch(v.get_type()) {
                 case type::array: {
+                    bool discard = false;
                     json j = json::array();
                     for (auto && vv : v) {
-                        j.push_back(to_json(vv));
+                        json jj = to_json(vv, &discard);
+                        if (!discard) j.push_back(jj);
                     }
                     return j;
                 }
@@ -596,14 +600,23 @@ namespace jtypes {
                 case type::string:
                     return v.as<std::string>();
                 case type::object: {
+                    bool discard = false;
                     json j = json::object();
                     for (auto && k : v.keys()) {
-                        j[k.as<std::string>()] = to_json(v[k]);
+                        json jj = to_json(v[k], &discard);
+                        if (!discard) j[k.as<std::string>()] = jj;
                     }
                     return j;
                 }
-                default:
+                case type::function:
+                case type::undefined: {
+                    if (should_discard) *should_discard = true;
+                    return json();
+                }
+                case type::null: {
                     return nullptr;
+                }
+                    
             }
         }
         
