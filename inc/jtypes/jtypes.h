@@ -41,6 +41,10 @@
 namespace jtypes {
 
     using mapbox::util::variant;
+    
+#ifndef JTYPES_NO_JSON
+    using json = nlohmann::json;
+#endif
 
     class var;
     
@@ -574,8 +578,6 @@ namespace jtypes {
         
 #ifndef JTYPES_NO_JSON
         
-        using json = nlohmann::json;
-        
         inline json to_json(const var &v) {
             switch(v.get_type()) {
                 case type::array: {
@@ -652,8 +654,6 @@ namespace jtypes {
     }
     
     inline var from_json(const std::string &str) {
-        using json = nlohmann::json;
-        
         try {
             json j = json::parse(str);
             return details::from_json(j);
@@ -680,6 +680,16 @@ namespace jtypes {
     template<typename Sig>
     inline var fnc(std::function<Sig> && f = std::function<Sig>()) {
         return var(function_t(std::forward<std::function<Sig>>(f)));
+    }
+    
+    std::ostream &operator<<(std::ostream &os, const var &v) {
+#ifndef JTYPES_NO_JSON
+        // use std::setw to format with intendation.
+        os << details::to_json(v);
+#else 
+        os << "var";
+#endif
+        return os;
     }
 
     // Implementation
