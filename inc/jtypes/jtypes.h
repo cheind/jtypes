@@ -219,13 +219,13 @@ namespace jtypes {
 
         // Array initializers
         
-        explicit var(const array_t &v);
-        explicit var(array_t &&v);
+        var(const array_t &v);
+        var(array_t &&v);
         
         // Dictionary initializers
 
-        explicit var(const object_t &v);
-        explicit var(object_t &&v);
+        var(const object_t &v);
+        var(object_t &&v);
 
         // Assignments
 
