@@ -140,7 +140,7 @@ namespace jtypes {
             std::function<Sig> as() const {
                 fnc_wrapper<Sig> * g = dynamic_cast<fnc_wrapper<Sig> *>(ptr.get());
                 if (g == nullptr) {
-                    return std::function<Sig>();
+                    throw bad_access("Could not convert stored signature to target function signature");
                 } else {
                     return g->f;
                 }
@@ -162,7 +162,7 @@ namespace jtypes {
                 if (f) {
                     return f(std::forward<Args>(args)...);
                 } else {
-                    throw std::bad_cast();
+                    throw bad_access("Failed to invoke function. Function signature was ok, but function is empty.");
                 }
             }
 
@@ -276,7 +276,10 @@ namespace jtypes {
         explicit operator bool() const;
         
         template<typename T>
-        T as(const var &opts = undefined_var()) const;
+        typename std::enable_if<!std::is_function<T>::value, T>::type as(const var &opts = undefined_var()) const;
+        
+        template<typename T>
+        typename std::enable_if<std::is_function<T>::value, std::function<T> >::type as(const var &opts = undefined_var()) const;
         
         // Callable interface
 
@@ -751,9 +754,21 @@ namespace jtypes {
     }
     
     template<typename T>
-    inline T var::as(const var &opts) const {
+    inline typename std::enable_if<!std::is_function<T>::value, T>::type var::as(const var &opts) const
+    {
         details::coerce<T> visitor = {opts};
         return apply_visitor(visitor, _value);
+    }
+    
+    template<typename T>
+    inline typename std::enable_if<std::is_function<T>::value, std::function<T> >::type var::as(const var &opts) const
+    {
+        if (is_function()) {
+            const function_t &f = _value.get<function_t>();
+            return f.as<T>();
+        }
+        
+        throw bad_access("Not a function or callable.");
     }
     
     template<typename Sig, typename... Args>

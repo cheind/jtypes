@@ -207,13 +207,30 @@ TEST_CASE("jtypes can be initialized from callables")
    
 }
 
-TEST_CASE("jtypes can be assigned from callables")
+TEST_CASE("jtypes allows extracting function objects")
 {
     
     using jtypes::creators::fnc;
     using sig = int(int, int);
    
     jtypes::var x;    
+    x = fnc<sig>([](int x, int y) { return x + y; });
+    
+    
+    std::function<sig> f = x.as<sig>();
+    REQUIRE(f(1, 2) == 3);
+    
+    using invalid_sig = int(void);
+    REQUIRE_THROWS_AS(x.as<invalid_sig>(), jtypes::bad_access);
+}
+
+TEST_CASE("jtypes can be assigned from callables")
+{
+    
+    using jtypes::creators::fnc;
+    using sig = int(int, int);
+    
+    jtypes::var x;
     x = fnc<sig>([](int x, int y) { return x + y; });
     REQUIRE(x.is_function());
     REQUIRE(x.invoke<sig>(1, 2) == 3);
