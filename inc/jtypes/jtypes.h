@@ -591,8 +591,8 @@ namespace jtypes {
             using object_iterator = typename std::conditional<std::is_const<Type>::value, object_t::const_iterator, object_t::iterator>::type;
             
             
-            explicit var_iterator(const array_iterator &i)
-            :_iter(i)
+            explicit var_iterator(const array_iterator &i, uint_t offset)
+            :_iter(index_array_iter_pair(offset, i))
             {}
             
             explicit var_iterator(const object_iterator &i)
@@ -607,16 +607,14 @@ namespace jtypes {
             
             var_iterator& operator++ () // Pre-increment
             {
-                if (_iter.which() == 0) ++_iter.template get<array_iterator>();
-                else ++_iter.template get<object_iterator>();
+                inc();
                 return *this;
             }
             
             var_iterator operator++ (int) // Post-increment
             {
                 var_iterator tmp(*this);
-                if (_iter.which() == 0) ++_iter.template get<array_iterator>();
-                else ++_iter.template get<object_iterator>();
+                inc();
                 return tmp;
             }
             
@@ -634,7 +632,7 @@ namespace jtypes {
             
             var key() const {
                 if (_iter.which() == 0) {
-                    throw bad_access("Cannot access key of array iterator");
+                    return _iter.template get<index_array_iter_pair>().first;
                 } else {
                     return _iter.template get<object_iterator>()->first;
                 }
@@ -642,7 +640,7 @@ namespace jtypes {
             
             Type& value() const {
                 if (_iter.which() == 0) {
-                    return *_iter.template get<array_iterator>();
+                    return *_iter.template get<index_array_iter_pair>().second;
                 } else {
                     return _iter.template get<object_iterator>()->second;
                 }
@@ -651,7 +649,7 @@ namespace jtypes {
             Type& operator* () const
             {
                 if (_iter.which() == 0) {
-                    return *_iter.template get<array_iterator>();
+                    return *_iter.template get<index_array_iter_pair>().second;
                 } else {
                     return _iter.template get<object_iterator>()->second;
                 }
@@ -660,7 +658,7 @@ namespace jtypes {
             Type* operator-> () const
             {
                 if (_iter.which() == 0) {
-                    return &(*_iter.template get<array_iterator>());
+                    return &(*_iter.template get<index_array_iter_pair>().second);
                 } else {
                     return &(_iter.template get<object_iterator>()->second);
                 }
@@ -673,11 +671,23 @@ namespace jtypes {
             
         private:
             
-            var_iterator(const variant<array_iterator, object_iterator> &other)
+            void inc() {
+                if (_iter.which() == 0) {
+                    auto &r = _iter.template get<index_array_iter_pair>();
+                    ++r.first;
+                    ++r.second;
+                } else  {
+                    ++_iter.template get<object_iterator>();
+                }
+            }
+            
+            using index_array_iter_pair = std::pair<uint_t, array_iterator>;
+            
+            var_iterator(const variant<index_array_iter_pair, object_iterator> &other)
             :_iter(other)
             {}
             
-            variant<array_iterator, object_iterator> _iter;
+            variant<index_array_iter_pair, object_iterator> _iter;
         };
         
 #ifndef JTYPES_NO_JSON
@@ -1112,7 +1122,7 @@ namespace jtypes {
         } else if (is_array()) {
             const array_t &a = _value.get<array_t>();
             for (size_t i = 0; i < a.size(); ++i) {
-                r.push_back(var(std::to_string(i)));
+                r.push_back(var(i));
             }
         }
         
@@ -1140,7 +1150,7 @@ namespace jtypes {
         if (is_object()) {
             return iterator(_value.get<object_t>().begin());
         } else {
-            return iterator(_value.get<array_t>().begin());
+            return iterator(_value.get<array_t>().begin(), 0);
         }
     }
     
@@ -1151,7 +1161,8 @@ namespace jtypes {
         if (is_object()) {
             return iterator(_value.get<object_t>().end());
         } else {
-            return iterator(_value.get<array_t>().end());
+            
+            return iterator(_value.get<array_t>().end(), _value.get<array_t>().size());
         }
     }
     
@@ -1162,7 +1173,7 @@ namespace jtypes {
         if (is_object()) {
             return const_iterator(_value.get<object_t>().begin());
         } else {
-            return const_iterator(_value.get<array_t>().begin());
+            return const_iterator(_value.get<array_t>().begin(), 0);
         }
     }
     
@@ -1173,7 +1184,7 @@ namespace jtypes {
         if (is_object()) {
             return const_iterator(_value.get<object_t>().end());
         } else {
-            return const_iterator(_value.get<array_t>().end());
+            return const_iterator(_value.get<array_t>().end(), _value.get<array_t>().size());
         }
     }
     

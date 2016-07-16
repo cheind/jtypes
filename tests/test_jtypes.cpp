@@ -486,7 +486,7 @@ TEST_CASE("jtypes key and values should be iterable")
     keys = x.keys();
     values = x.values();
     
-    REQUIRE(keys == arr({"0", "1", "2"}));
+    REQUIRE(keys == arr({0, 1, 2}));
     REQUIRE(values == arr({"a", "b", "c"}));
 }
 
@@ -777,14 +777,12 @@ TEST_CASE("jtypes should support iterators")
         
         auto i = x["f"].begin();
         auto end = x["f"].end();
-
-        
-        jtypes::var received;
-        for (; i != end; i++) {
-            received.push_back(*i);
-        }
-        
-        REQUIRE(received == x["f"]);
+    
+        REQUIRE(*i == 2); REQUIRE(i.key() == 0); ++i;
+        REQUIRE(*i == 1); REQUIRE(i.key() == 1); ++i;
+        REQUIRE(*i == 3); REQUIRE(i.key() == 2); ++i;
+        REQUIRE(*i == "hello"); REQUIRE(i.key() == 3); ++i;
+        REQUIRE(i == end);
     }
     
     {
