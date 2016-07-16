@@ -563,6 +563,7 @@ TEST_CASE("jtypes should support equality comparison")
 {
     using jtypes::arr;
     using jtypes::obj;
+    using jtypes::fnc;
 
     // Numbers 
 
@@ -621,6 +622,15 @@ TEST_CASE("jtypes should support equality comparison")
     REQUIRE(o4 == o3);
     o4["a"] = "abc";
     REQUIRE(o4 != o3);
+    
+    // Functions
+    
+    jtypes::var f1 = fnc<bool(void)>([](){return true;});
+    jtypes::var f2 = fnc<bool(void)>([](){return true;});
+    jtypes::var f3 = f1;
+    
+    REQUIRE(f1 != f2);
+    REQUIRE(f1 == f3);
 }
 
 TEST_CASE("jtypes should support less-than comparison")
@@ -655,15 +665,6 @@ TEST_CASE("jtypes should support less-than comparison")
     std::less<jtypes::var> less;
     REQUIRE(less(jtypes::var(2u), jtypes::var(3.5)));
     REQUIRE(!less(jtypes::var(3.5), jtypes::var(2u)));
-    
-    /*
-    jtypes::var a = arr({ 3.5, 2u, 1 });
-    std::sort(a.array().begin(), a.array().end());
-    
-    REQUIRE(a[0] == 1);
-    REQUIRE(a[1] == 2);
-    REQUIRE(a[2] == 3.5);
-    */
 }
 
 TEST_CASE("jtypes should support JSON")

@@ -195,7 +195,7 @@ namespace jtypes {
             }
 
             bool operator==(const fnc_holder &rhs) const {
-                return false;
+                return ptr.get() == rhs.ptr.get();
             }
 
             bool operator<(const fnc_holder &rhs) const {
