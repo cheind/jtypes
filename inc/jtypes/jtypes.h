@@ -68,21 +68,17 @@ namespace jtypes {
     typedef std::vector<var> array_t;
     typedef std::map<std::string, var> object_t;
     
-    enum class type {
+    enum class vtype {
         undefined = 0,
         null,
         boolean,
-        number,
+        signed_number,
+        unsigned_number,
+        real_number,
         string,
         function,
         array,
-        object
-    };
-
-    enum class number_type {
-        signed_integral,
-        unsigned_integral,
-        real
+        object,
     };
     
     class bad_access : public std::logic_error {
@@ -285,19 +281,19 @@ namespace jtypes {
         var &operator=(function_t &&rhs);
         
         // Type queries
-        type get_type() const;
-        bool_t is_undefined() const;
-        bool_t is_null() const;
-        bool_t is_boolean() const;
-        bool_t is_number() const;
-        bool_t is_string() const;
-        bool_t is_function() const;
-        bool_t is_array() const;
-        bool_t is_object() const;
-        bool_t is_signed_integral() const;
-        bool_t is_unsigned_integral() const;
-        bool_t is_real() const;
-        bool_t is_structured() const;
+        vtype type() const;
+        bool is_undefined() const;
+        bool is_null() const;
+        bool is_boolean() const;
+        bool is_number() const;
+        bool is_signed_number() const;
+        bool is_unsigned_number() const;
+        bool is_real_number() const;
+        bool is_string() const;
+        bool is_function() const;
+        bool is_array() const;
+        bool is_object() const;
+        bool is_structured() const;
         
         // Getters with coercion
         
@@ -719,8 +715,8 @@ namespace jtypes {
         inline json to_json(const var &v, bool *should_discard = 0) {
             if (should_discard) *should_discard = false;
             
-            switch(v.get_type()) {
-                case type::array: {
+            switch(v.type()) {
+                case vtype::array: {
                     bool discard = false;
                     json j = json::array();
                     for (auto && vv : v) {
@@ -729,15 +725,17 @@ namespace jtypes {
                     }
                     return j;
                 }
-                case type::boolean:
+                case vtype::boolean:
                     return v.as<bool>();
-                case type::number:
-                    if (v.is_signed_integral()) return v.as<sint_t>();
-                    else if (v.is_unsigned_integral()) return v.as<uint_t>();
-                    else return v.as<real_t>();
-                case type::string:
+                case vtype::signed_number:
+                    return v.as<sint_t>();
+                case vtype::unsigned_number:
+                    return v.as<uint_t>();
+                case vtype::real_number:
+                    return v.as<real_t>();
+                case vtype::string:
                     return v.as<std::string>();
-                case type::object: {
+                case vtype::object: {
                     bool discard = false;
                     json j = json::object();
                     for (auto && k : v.keys()) {
@@ -746,12 +744,12 @@ namespace jtypes {
                     }
                     return j;
                 }
-                case type::function:
-                case type::undefined: {
+                case vtype::function:
+                case vtype::undefined: {
                     if (should_discard) *should_discard = true;
                     return json();
                 }
-                case type::null: {
+                case vtype::null: {
                     return nullptr;
                 }
                     
@@ -1013,21 +1011,33 @@ namespace jtypes {
     
     
     
-    inline type var::get_type() const { return (type)_value.which(); }
+    inline vtype var::type() const {
+        if      (is_undefined()) return vtype::undefined;
+        else if (is_null()) return vtype::null;
+        else if (is_boolean()) return vtype::boolean;
+        else if (is_signed_number()) return vtype::signed_number;
+        else if (is_unsigned_number()) return vtype::unsigned_number;
+        else if (is_real_number()) return vtype::real_number;
+        else if (is_string()) return vtype::string;
+        else if (is_function()) return vtype::function;
+        else if (is_array()) return vtype::array;
+        else if (is_object()) return vtype::object;
+        else
+            throw bad_access("unknown type");
+    }
     
-    inline bool_t var::is_undefined() const { return _value.which() == (int)type::undefined; }
-    inline bool_t var::is_null() const { return _value.which() == (int)type::null; }
-    inline bool_t var::is_boolean() const { return _value.which() == (int)type::boolean; }
-    inline bool_t var::is_number() const { return _value.which() == (int)type::number; }
-    inline bool_t var::is_string() const { return _value.which() == (int)type::string; }
-    inline bool_t var::is_function() const { return _value.which() == (int)type::function; }
-    inline bool_t var::is_array() const { return _value.which() == (int)type::array; }
-    inline bool_t var::is_object() const { return _value.which() == (int)type::object; }
-    inline bool_t var::is_structured() const { return is_object() || is_array(); }
-    
-    inline bool_t var::is_signed_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::signed_integral; }
-    inline bool_t var::is_unsigned_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::unsigned_integral; }
-    inline bool_t var::is_real() const { return is_number() && _value.get<number_t>().which() == (int)number_type::real; }
+    inline bool var::is_undefined() const { return _value.is<undefined_t>(); }
+    inline bool var::is_null() const { return _value.is<null_t>(); }
+    inline bool var::is_boolean() const { return _value.is<bool_t>(); }
+    inline bool var::is_number() const { return _value.is<number_t>(); }
+    inline bool var::is_signed_number() const { return is_number() && _value.get<number_t>().is<sint_t>(); }
+    inline bool var::is_unsigned_number() const { return is_number() && _value.get<number_t>().is<uint_t>(); }
+    inline bool var::is_real_number() const { return is_number() && _value.get<number_t>().is<real_t>(); }
+    inline bool var::is_string() const { return _value.is<string_t>(); }
+    inline bool var::is_function() const { return _value.is<function_t>(); }
+    inline bool var::is_array() const { return _value.is<array_t>(); }
+    inline bool var::is_object() const { return _value.is<object_t>(); }
+    inline bool var::is_structured() const { return is_object() || is_array();}
     
     
     template<class T>

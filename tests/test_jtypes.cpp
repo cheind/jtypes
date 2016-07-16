@@ -19,11 +19,13 @@ TEST_CASE("jtypes can be initialized from simple types")
     {
         jtypes::var x;
         REQUIRE(x.is_undefined());
+        REQUIRE(x.type() == jtypes::vtype::undefined);
     }
     
     {
         jtypes::var x(nullptr);
         REQUIRE(x.is_null());
+        REQUIRE(x.type() == jtypes::vtype::null);
     }
     
     {
@@ -35,49 +37,54 @@ TEST_CASE("jtypes can be initialized from simple types")
     {
         jtypes::var x(false);
         REQUIRE(x.is_boolean());
+        REQUIRE(x.type() == jtypes::vtype::boolean);
         REQUIRE(x.as<bool>() == false);
     }
     
     {
         jtypes::var x(0);
-        REQUIRE(x.is_signed_integral());
+        REQUIRE(x.is_signed_number());
+        REQUIRE(x.type() == jtypes::vtype::signed_number);
         REQUIRE(x == jtypes::var(0));
         REQUIRE(x.as<int>() == 0);
     }
     
     {
         jtypes::var x(3);
-        REQUIRE(x.is_signed_integral());
+        REQUIRE(x.is_signed_number());
+        REQUIRE(x.type() == jtypes::vtype::signed_number);
         REQUIRE(x.as<int>() == 3);
     }
     
     {
         jtypes::var x(-3);
-        REQUIRE(x.is_signed_integral());
+        REQUIRE(x.is_signed_number());
         REQUIRE(x.as<int>() == -3);
     }
 
     {
         jtypes::var x(3u);
-        REQUIRE(x.is_unsigned_integral());
+        REQUIRE(x.is_unsigned_number());
         REQUIRE(x.as<int>() == 3);
     }
     
     {
         jtypes::var x(3.f);
-        REQUIRE(x.is_real());
+        REQUIRE(x.is_real_number());
+        REQUIRE(x.type() == jtypes::vtype::real_number);
         REQUIRE(x.as<float>() == 3.f);
     }
     
     {
         jtypes::var x(3.0);
-        REQUIRE(x.is_real());
+        REQUIRE(x.is_real_number());
         REQUIRE(x.as<float>() == 3.f);
     }
     
     {
         jtypes::var x('x');
         REQUIRE(x.is_string());
+        REQUIRE(x.type() == jtypes::vtype::string);
         REQUIRE(x.as<std::string>() == "x");
     }
     
@@ -107,23 +114,23 @@ TEST_CASE("jtypes can be assigned from simple types")
     REQUIRE(x == true);
     
     x = 0;
-    REQUIRE(x.is_signed_integral());
+    REQUIRE(x.is_signed_number());
     REQUIRE(x == 0);
     
     x = 10;
-    REQUIRE(x.is_signed_integral());
+    REQUIRE(x.is_signed_number());
     REQUIRE(x == 10);
     
     x = -3;
-    REQUIRE(x.is_signed_integral());
+    REQUIRE(x.is_signed_number());
     REQUIRE(x == -3);
     
     x = 3u;
-    REQUIRE(x.is_unsigned_integral());
+    REQUIRE(x.is_unsigned_number());
     REQUIRE(x == 3u);
 
     x = 3.f;
-    REQUIRE(x.is_real());
+    REQUIRE(x.is_real_number());
     REQUIRE(x == 3.0);
     
     x = 'a';
@@ -163,6 +170,7 @@ TEST_CASE("jtypes can be initialized from callables")
     {
         jtypes::var x(fnc<sig>(&free_func));
         REQUIRE(x.is_function());
+        REQUIRE(x.type() == jtypes::vtype::function);
         REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
 
@@ -232,6 +240,7 @@ TEST_CASE("jtypes can be assigned from callables")
     jtypes::var x;
     x = fnc<sig>([](int x, int y) { return x + y; });
     REQUIRE(x.is_function());
+    REQUIRE(x.type() == jtypes::vtype::function);
     REQUIRE(x.invoke<sig>(1, 2) == 3);
 }
 
@@ -243,6 +252,7 @@ TEST_CASE("jtypes can be initialized from arrays")
     {
         jtypes::var x = arr({ 1,2,3 });
         REQUIRE(x.is_array());
+        REQUIRE(x.type() == jtypes::vtype::array);
         REQUIRE(x[0] == 1);
         REQUIRE(x[1] == 2);
         REQUIRE(x[2] == 3);
@@ -301,6 +311,7 @@ TEST_CASE("jtypes can be initialized from dictionaries")
             {"b", "hello world"}
         });
         REQUIRE(x.is_object());
+        REQUIRE(x.type() == jtypes::vtype::object);
         REQUIRE(x["a"] == 10);
         REQUIRE(x["b"] == "hello world");
     }
