@@ -505,13 +505,14 @@ TEST_CASE("jtypes key and values should be iterable")
 
 TEST_CASE("jtypes should allow nested object creation")
 {
-    jtypes::var x; // undefined
+    jtypes::var x;
     
-    x["first"]["number"] = jtypes::var(3);
-    x["first"]["string"] = jtypes::var("hello world");
+    jtypes::create_path(x, "first.number", jtypes::var(3));
+    jtypes::create_path(x, "first.string", jtypes::var("hello world"));
     
     REQUIRE(x.is_object());
     REQUIRE(x["first"]["number"].as<int>() == 3);
+    REQUIRE(x["first"]["string"].as<std::string>() == "hello world");
     
     // const
     
@@ -521,9 +522,9 @@ TEST_CASE("jtypes should allow nested object creation")
 }
 
 
-TEST_CASE("jtypes should allow on the fly array creation")
+TEST_CASE("jtypes should allow on the array creation")
 {
-    jtypes::var x; // undefined
+    jtypes::var x = jtypes::arr();
     
     x[0] = jtypes::var("a");
     x[3] = "b";
@@ -542,7 +543,7 @@ TEST_CASE("jtypes should allow on the fly array creation")
     REQUIRE(xx[2].as<std::string>() == "undefined");
     REQUIRE(xx[3].as<std::string>() == "b");
 
-    x = jtypes::var();
+    x = jtypes::arr();
     x.push_back(10);
     x.push_back("hello world");
     x.push_back(true);
@@ -779,7 +780,7 @@ TEST_CASE("jtypes should support iterators")
     {
         // Range iteration
         
-        jtypes::var received;
+        jtypes::var received = jtypes::arr();
         for (auto v : x) {
             received.push_back(v);
         }
@@ -788,7 +789,7 @@ TEST_CASE("jtypes should support iterators")
         
         
         const jtypes::var &xx = x;
-        received = jtypes::var();
+        received = jtypes::arr();
         for (auto v : xx["f"]) {
             received.push_back(v);
         }
@@ -801,7 +802,7 @@ TEST_CASE("jtypes should support iterators")
         
         jtypes::var x = arr({ 5, 10, 6, 20, 7 });
         
-        jtypes::var y;
+        jtypes::var y = jtypes::arr();
         std::transform(x.begin(), x.end(), std::back_inserter(y), [](const var &v) {return (int)v + 1;});
         REQUIRE(y == arr({ 6, 11, 7, 21, 8 }));
     
@@ -816,8 +817,12 @@ TEST_CASE("jtypes should support iterators")
         for (auto i = last; i != x.end(); ++i) {
             REQUIRE(*i >= 10);
         }
-        
-
+    }
+    
+    {
+        jtypes::var x = 1;
+        REQUIRE_THROWS_AS(x.begin(), jtypes::type_error);
+        REQUIRE_THROWS_AS(x.end(), jtypes::type_error);
     }
 }
 
@@ -846,6 +851,21 @@ TEST_CASE("jtypes should support merging")
     });
     
     REQUIRE(opts == expected);
+}
+
+TEST_CASE("jtypes should support split")
+{
+    jtypes::var s = "a.b.c";
+    REQUIRE(s.split('.') == jtypes::arr({"a", "b", "c"}));
+}
+
+TEST_CASE("jtypes behaviour should mimic ECMAScript 5 behaviour")
+{
+    jtypes::var x;
+    REQUIRE(x.is_undefined());
+    
+    
+    REQUIRE_THROWS_AS(x.invoke<void(void)>(), jtypes::type_error);
 }
 
 

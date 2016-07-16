@@ -81,6 +81,32 @@ namespace jtypes {
         object,
     };
     
+    class type_error : public std::logic_error {
+        
+    public:
+        explicit type_error(const std::string& what_arg)
+        : logic_error(what_arg) {
+        }
+        
+        explicit type_error(const char* what_arg)
+        : logic_error(what_arg) {
+        }
+        
+    };
+    
+    class range_error : public std::logic_error {
+        
+    public:
+        explicit range_error(const std::string& what_arg)
+        : logic_error(what_arg) {
+        }
+        
+        explicit range_error(const char* what_arg)
+        : logic_error(what_arg) {
+        }
+        
+    };
+    
     class bad_access : public std::logic_error {
         
     public:
@@ -345,9 +371,14 @@ namespace jtypes {
         bool operator<=(var const& rhs) const;
         bool operator>=(var const &rhs) const;
         
-        // Merging
+        
+        var size() const;
+        
+        // Helper methods
         
         var &merge_from(const var &other);
+        
+        var split(const var &separator) const;
         
         static const var &undefined_var();
         
@@ -362,9 +393,6 @@ namespace jtypes {
         array_t,
         object_t
         > oneof;
-        
-        template<typename T>
-        T &get_variant_or_convert();
         
         oneof _value;
     };
@@ -406,6 +434,19 @@ namespace jtypes {
         {
             typedef decltype(std::begin(input)) range_value;
             return join(input, separator, [](const range_value &v) {return v;});
+        }
+        
+        inline std::vector<string_t> split(const string_t &src, char separator) {
+        
+            std::vector<string_t> elems;
+            std::istringstream iss(src);
+            string_t tok;
+            
+            while(std::getline(iss, tok, separator)) {
+                elems.push_back(tok);
+            }
+            
+            return elems;
         }
 
         template<typename NumberType>
@@ -759,7 +800,7 @@ namespace jtypes {
         inline var from_json(const json &j) {
             switch (j.type()) {
                 case json::value_t::array: {
-                    var v;
+                    var v = array_t();
                     for (auto iter = j.begin(); iter != j.end(); ++iter) {
                         v.push_back(from_json(*iter));
                     }
@@ -776,7 +817,7 @@ namespace jtypes {
                 case json::value_t::number_unsigned:
                     return j.get<uint_t>();
                 case json::value_t::object: {
-                    var v;
+                    var v = object_t();
                     for (auto iter = j.begin(); iter != j.end(); ++iter) {
                         v[iter.key()] = from_json(iter.value());
                     }
@@ -822,6 +863,10 @@ namespace jtypes {
     
 #endif
     
+    inline var arr() {
+        return array_t();
+    }
+    
     inline var arr(std::initializer_list<var> v) {
         return details::create_array(v);
     }
@@ -831,6 +876,15 @@ namespace jtypes {
         return details::create_array(begin, end);
     }
     
+    template<typename T>
+    inline var arr(const std::vector<T> &v) {
+        return details::create_array(std::begin(v), std::end(v));
+    }
+    
+    inline var obj() {
+        return object_t();
+    }
+    
     inline var obj(std::initializer_list<std::pair<const string_t, var>> v) {
         return details::create_object(v);
     }
@@ -838,6 +892,31 @@ namespace jtypes {
     template<typename Sig>
     inline var fnc(std::function<Sig> && f = std::function<Sig>()) {
         return var(function_t(std::forward<std::function<Sig>>(f)));
+    }
+    
+    inline void create_path(var &root, const var &path, const var &value = obj()) {
+        
+        var path_elements = path.is_array() ? path : var(path.as<string_t>()).split('.');
+        
+        if (path_elements.size() == 0)
+            throw range_error("create_path requires at least one path element.");
+        
+        if (!root.is_object()) {
+            root = obj();
+        }
+        
+        const size_t n = (size_t)path_elements.size();
+        
+        var *e = &root;
+        for (size_t i = 0; i < n - 1; ++i) {
+            var &c = (*e)[path_elements[i]];
+            if (!c.is_object()) {
+                c = obj();
+            }
+            e = &c;
+        }
+        
+        (*e)[path_elements[n-1]] = value;
     }
     
     std::ostream &operator<<(std::ostream &os, const var &v) {
@@ -1009,8 +1088,6 @@ namespace jtypes {
     }
     
     
-    
-    
     inline vtype var::type() const {
         if      (is_undefined()) return vtype::undefined;
         else if (is_null()) return vtype::null;
@@ -1059,52 +1136,54 @@ namespace jtypes {
     template<typename T>
     inline typename std::enable_if<std::is_function<T>::value, std::function<T> >::type var::as(const var &opts) const
     {
-        if (is_function()) {
-            const function_t &f = _value.get<function_t>();
-            return f.as<T>();
-        }
+        if (!is_function())
+            throw type_error("not a function");
         
-        throw bad_access("Not a function or callable.");
+        const function_t &f = _value.get<function_t>();
+        return f.as<T>();
     }
     
     template<typename Sig, typename... Args>
     inline typename details::result_of_sig<Sig>::type var::invoke(Args&&... args) const
     {
-        if (is_function()) {
-            const function_t &f = _value.get<function_t>();
-            return f.invoke_with_signature<Sig>(std::forward<Args>(args)...);
-        }
+        if (!is_function())
+            throw type_error("not a function");
         
-        throw bad_access("Not a function or not callable.");
+        const function_t &f = _value.get<function_t>();
+        return f.invoke_with_signature<Sig>(std::forward<Args>(args)...);
     }
     
     // Object / Array accessors
     inline var &var::operator[](const var &key) {
+        if (!is_structured()) {
+            throw type_error("operator [] requires a structured type.");
+        }
         
-        if (key.is_number()) {
+        if (key.is_number() && is_array()) {
             
-            array_t &a = get_variant_or_convert<array_t>();
+            array_t &a = _value.get<array_t>();
             size_t idx = key.as<size_t>();
             if (a.size() < idx + 1) {
                 a.resize(idx + 1);
             }
             return a[idx];
-        } else if (key.is_string()) {
-            // Implicit conversion to object
-            object_t &o = get_variant_or_convert<object_t>();
-            
+        } else if (key.is_string() && is_object()) {
+            object_t &o = _value.get<object_t>();
             auto iter = o.insert(object_t::value_type(key.as<std::string>(), var()));
             return iter.first->second;
         } else {
-            throw bad_access("Key is not number or string.");
+            throw type_error("key type and structured var type do not match.");
         }
         
     }
     
     inline const var &var::operator[](const var &key) const {
-        if (is_undefined()) {
-            return undefined_var();
-        } else if (key.is_number() && is_array()) {
+        
+        if (!is_structured()) {
+            throw type_error("operator [] requires a structured type.");
+        }
+        
+        if (key.is_number() && is_array()) {
             const array_t &a = _value.get<array_t>();
             size_t idx = key.as<size_t>();
             if (idx < a.size()) {
@@ -1123,20 +1202,16 @@ namespace jtypes {
                 return undefined_var();
             }
         } else {
-            throw bad_access("Key is not number or string.");
+            throw type_error("key type and structured var type do not match.");
         }
     }
 
     inline void var::push_back(const var &v) {
-        array_t &a = get_variant_or_convert<array_t>();
+        if (!is_array())
+            throw type_error("push_back requires array type.");
+        
+        array_t &a = _value.get<array_t>();
         a.push_back(v);
-    }
-    
-    template<typename T>
-    inline T &var::get_variant_or_convert() {
-        if (!_value.is<T>())
-            _value = T();
-        return _value.get<T>();
     }
         
     
@@ -1178,9 +1253,10 @@ namespace jtypes {
     }
     
     inline var::iterator var::begin() {
-        if (!is_structured())
-            object_t &o = get_variant_or_convert<object_t>();
         
+        if (!is_structured())
+            throw type_error("iterator interface requires structured type.");
+    
         if (is_object()) {
             return iterator(_value.get<object_t>().begin());
         } else {
@@ -1190,7 +1266,7 @@ namespace jtypes {
     
     inline var::iterator var::end() {
         if (!is_structured())
-            object_t &o = get_variant_or_convert<object_t>();
+            throw type_error("iterator interface requires structured type.");
         
         if (is_object()) {
             return iterator(_value.get<object_t>().end());
@@ -1202,7 +1278,7 @@ namespace jtypes {
     
     inline var::const_iterator var::begin() const {
         if (!is_structured())
-            throw bad_access("iterator interface requires structured type.");
+            throw type_error("iterator interface requires structured type.");
         
         if (is_object()) {
             return const_iterator(_value.get<object_t>().begin());
@@ -1213,7 +1289,7 @@ namespace jtypes {
     
     inline var::const_iterator var::end() const {
         if (!is_structured())
-            throw bad_access("iterator interface requires structured type.");
+            throw type_error("iterator interface requires structured type.");
         
         if (is_object()) {
             return const_iterator(_value.get<object_t>().end());
@@ -1255,9 +1331,31 @@ namespace jtypes {
         return !(*this < rhs);
     }
     
+    inline var var::size() const {
+        if (!is_structured())
+            throw type_error("size requires a structured type.");
+        
+        if (is_array()) {
+            return _value.get<array_t>().size();
+        } else {
+            return _value.get<object_t>().size();
+        }
+    }
+    
     inline var &var::merge_from(const var &other) {
         details::merge(*this, other);
         return *this;
+    }
+    
+    inline var var::split(const var &delim) const {
+        const string_t s_src = as<string_t>();
+        const string_t s_delim = delim.as<string_t>();
+        
+        if (s_delim.size() != 1) {
+            throw range_error("split requires the deliminator to be a single character.");
+        }
+        
+        return arr(details::split(s_src, s_delim.at(0)));
     }
 }
 
