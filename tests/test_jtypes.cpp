@@ -490,27 +490,6 @@ TEST_CASE("jtypes key and values should be iterable")
     REQUIRE(values == arr({"a", "b", "c"}));
 }
 
-TEST_CASE("jtypes array iterators can be accessed") 
-{
-    
-    using jtypes::arr;
-    using jtypes::obj;
-
-
-    jtypes::var x = arr({ 5, 10, 20, 7 });
-
-    const int unsorted[] = { 5, 10, 20, 7 };
-    
-    
-/*
-    REQUIRE(equal(x.array().begin(), x.array().end(), unsorted));
-    
-    std::sort(x.array().begin(), x.array().end());
-    const int sorted[] = { 5, 7, 10, 20};
-    REQUIRE(std::equal(x.array().begin(), x.array().end(), sorted) == true);
- */
-}
-
 
 
 TEST_CASE("jtypes should allow nested object creation")
@@ -803,6 +782,24 @@ TEST_CASE("jtypes should support iterators")
         }
         
         REQUIRE(received == jtypes::arr({2,1,3,"hello"}));
+    }
+    
+    {
+        // Manipulation
+        
+        jtypes::var x = arr({ 5, 10, 6, 20, 7 });
+    
+        
+        auto last = std::partition(x.begin(), x.end(), [](const var &i) { return i < 10;});
+        
+        
+        for (auto i = x.begin(); i != last; ++i) {
+            REQUIRE(*i < 10);
+        }
+        
+        for (auto i = last; i != x.end(); ++i) {
+            REQUIRE(*i >= 10);
+        }
     }
     
 
