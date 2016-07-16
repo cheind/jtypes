@@ -802,8 +802,34 @@ TEST_CASE("jtypes should support iterators")
             REQUIRE(*i >= 10);
         }
     }
-    
-
 }
+
+TEST_CASE("jtypes should support merging")
+{
+    jtypes::var opts = jtypes::obj({
+        {"a", 2.1},
+        {"b", "hello world"},
+        {"c", true},
+        {"d", jtypes::obj({{"e", nullptr}})},
+        {"f", jtypes::arr({2,1,3,"hello"})}
+    }).merge_from(jtypes::obj({
+        {"a", 3},
+        {"x", "wuff"},
+        {"d", jtypes::obj({{"d", 1}})},
+        {"f", jtypes::arr({10,11})}
+    }));
+    
+    jtypes::var expected = jtypes::obj({
+        {"a", 3},
+        {"b", "hello world"},
+        {"c", true},
+        {"d", jtypes::obj({{"e", nullptr}, {"d", 1}})},
+        {"f", jtypes::arr({10,11})},
+        {"x", "wuff"}
+    });
+    
+    REQUIRE(opts == expected);
+}
+
 
 

@@ -350,6 +350,10 @@ namespace jtypes {
         bool operator<=(var const& rhs) const;
         bool operator>=(var const &rhs) const;
         
+        // Merging
+        
+        var &merge_from(const var &other);
+        
         static const var &undefined_var();
         
     private:
@@ -689,6 +693,27 @@ namespace jtypes {
             
             variant<index_array_iter_pair, object_iterator> _iter;
         };
+        
+        inline bool merge(var &dst, const var &src) {
+            if (!src.is_object())
+                return false;
+            
+            if (!dst.is_object()) {
+                dst = src;
+                return true;
+            }
+            
+            // For each entry in src
+            for (auto && k : src.keys()) {
+                if (dst[k].is_object() && src[k].is_object()) {
+                    merge(dst[k], src[k]);
+                } else {
+                    dst[k] = src[k];
+                }
+            }
+            
+            return true;
+        }
         
 #ifndef JTYPES_NO_JSON
         
@@ -1219,6 +1244,11 @@ namespace jtypes {
     
     inline bool var::operator>=(var const &rhs) const {
         return !(*this < rhs);
+    }
+    
+    inline var &var::merge_from(const var &other) {
+        details::merge(*this, other);
+        return *this;
     }
 }
 
