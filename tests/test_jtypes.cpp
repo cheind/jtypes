@@ -789,6 +789,10 @@ TEST_CASE("jtypes should support iterators")
         // Manipulation
         
         jtypes::var x = arr({ 5, 10, 6, 20, 7 });
+        
+        jtypes::var y;
+        std::transform(x.begin(), x.end(), std::back_inserter(y), [](const var &v) {return (int)v + 1;});
+        REQUIRE(y == arr({ 6, 11, 7, 21, 8 }));
     
         
         auto last = std::partition(x.begin(), x.end(), [](const var &i) { return i < 10;});
@@ -801,6 +805,8 @@ TEST_CASE("jtypes should support iterators")
         for (auto i = last; i != x.end(); ++i) {
             REQUIRE(*i >= 10);
         }
+        
+
     }
 }
 

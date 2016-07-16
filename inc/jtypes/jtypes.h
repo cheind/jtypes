@@ -214,6 +214,7 @@ namespace jtypes {
         
         typedef details::var_iterator<var> iterator;
         typedef details::var_iterator<var const> const_iterator;
+        typedef var value_type;
         
         // Value initializers
         
