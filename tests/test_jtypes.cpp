@@ -500,12 +500,15 @@ TEST_CASE("jtypes array iterators can be accessed")
     jtypes::var x = arr({ 5, 10, 20, 7 });
 
     const int unsorted[] = { 5, 10, 20, 7 };
-
-    REQUIRE(equal(x.begin(), x.end(), unsorted));
     
-    std::sort(x.begin(), x.end());
+    
+/*
+    REQUIRE(equal(x.array().begin(), x.array().end(), unsorted));
+    
+    std::sort(x.array().begin(), x.array().end());
     const int sorted[] = { 5, 7, 10, 20};
-    REQUIRE(std::equal(x.begin(), x.end(), sorted) == true);
+    REQUIRE(std::equal(x.array().begin(), x.array().end(), sorted) == true);
+ */
 }
 
 
@@ -673,14 +676,15 @@ TEST_CASE("jtypes should support less-than comparison")
     std::less<jtypes::var> less;
     REQUIRE(less(jtypes::var(2u), jtypes::var(3.5)));
     REQUIRE(!less(jtypes::var(3.5), jtypes::var(2u)));
-        
+    
+    /*
     jtypes::var a = arr({ 3.5, 2u, 1 });
-    std::sort(a.begin(), a.end());
+    std::sort(a.array().begin(), a.array().end());
     
     REQUIRE(a[0] == 1);
     REQUIRE(a[1] == 2);
     REQUIRE(a[2] == 3.5);
-    
+    */
 }
 
 TEST_CASE("jtypes should support JSON")
@@ -730,6 +734,78 @@ TEST_CASE("jtypes should support JSON")
     REQUIRE(parsed == jtypes::obj({
         {"b", jtypes::arr({1,2}) }
     }));
+
+}
+
+#include <iterator>
+
+using namespace jtypes;
+
+using mapbox::util::variant;
+
+
+
+TEST_CASE("jtypes should support iterators")
+{
+    
+    
+    jtypes::var x = jtypes::obj({
+        {"a", 2.1},
+        {"b", "hello world"},
+        {"c", true},
+        {"d", jtypes::obj({{"e", nullptr}})},
+        {"f", jtypes::arr({2,1,3,"hello"})}
+    });
+    
+    {
+        // Object iteration
+        auto i = x.begin();
+        auto end = x.end();
+        
+        REQUIRE(std::distance(i, end) == 5);
+        
+        REQUIRE(*i == 2.1); REQUIRE(i.key() == "a"); ++i;
+        REQUIRE(*i == "hello world"); REQUIRE(i.key() == "b"); ++i;
+        REQUIRE(*i == true); REQUIRE(i.key() == "c"); ++i;
+        REQUIRE(*i == jtypes::obj({{"e", nullptr}})); REQUIRE(i.key() == "d"); ++i;
+        REQUIRE(*i == jtypes::arr({2,1,3,"hello"})); REQUIRE(i.key() == "f"); ++i;
+        REQUIRE(i == end);
+    }
+    
+    {
+        // Array iteration
+        
+        auto i = x["f"].begin();
+        auto end = x["f"].end();
+
+        
+        jtypes::var received;
+        for (; i != end; i++) {
+            received.push_back(*i);
+        }
+        
+        REQUIRE(received == x["f"]);
+    }
+    
+    {
+        // Range iteration
+        
+        jtypes::var received;
+        for (auto v : x) {
+            received.push_back(v);
+        }
+        
+        REQUIRE(received == jtypes::arr({2.1, "hello world", true, jtypes::obj({{"e", nullptr}}), jtypes::arr({2,1,3,"hello"})}));
+        
+        
+        const jtypes::var &xx = x;
+        received = jtypes::var();
+        for (auto v : xx["f"]) {
+            received.push_back(v);
+        }
+        
+        REQUIRE(received == jtypes::arr({2,1,3,"hello"}));
+    }
     
 
 }

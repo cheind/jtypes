@@ -30,7 +30,7 @@
 
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include <map>
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -50,6 +50,9 @@ namespace jtypes {
     
     namespace details {
         class fnc_holder;
+        
+        template<typename Type, typename UnqualifiedType = typename std::remove_cv<Type>::type>
+        class var_iterator;
     }
    
     typedef int64_t sint_t;
@@ -63,7 +66,7 @@ namespace jtypes {
     typedef std::string string_t;
     typedef details::fnc_holder function_t;
     typedef std::vector<var> array_t;
-    typedef std::unordered_map<std::string, var> object_t;
+    typedef std::map<std::string, var> object_t;
     
     enum class type {
         undefined = 0,
@@ -202,11 +205,15 @@ namespace jtypes {
         private:
             std::shared_ptr<fnc_erasure_base> ptr;
         };
+        
     }
 
     
     class var {
     public:
+        
+        typedef details::var_iterator<var> iterator;
+        typedef details::var_iterator<var const> const_iterator;
         
         // Value initializers
         
@@ -291,6 +298,7 @@ namespace jtypes {
         bool_t is_signed_integral() const;
         bool_t is_unsigned_integral() const;
         bool_t is_real() const;
+        bool_t is_structured() const;
         
         // Getters with coercion
         
@@ -319,17 +327,16 @@ namespace jtypes {
         const var &operator|(const var &default_value) const;
         
         // Keys accessor
-        var keys() const;
-        var values() const;
+        array_t keys() const;
+        array_t values() const;
         
-        // Array accessors
+        // Iterator access
+        iterator begin();
+        iterator end();
         
-        array_t::iterator begin();
-        array_t::iterator end();
+        const_iterator begin() const;
+        const_iterator end() const;
         
-        array_t::const_iterator begin() const;
-        array_t::const_iterator end() const;
-
         // Array inserters
 
         void push_back(const var &v);
@@ -576,6 +583,102 @@ namespace jtypes {
             }
             return var(std::move(o));
         }
+        
+        template<typename Type, typename UnqualifiedType>
+        class var_iterator : public std::iterator<std::forward_iterator_tag, UnqualifiedType, std::ptrdiff_t, Type*, Type&> {
+        public:
+            using array_iterator = typename std::conditional<std::is_const<Type>::value, array_t::const_iterator, array_t::iterator>::type;
+            using object_iterator = typename std::conditional<std::is_const<Type>::value, object_t::const_iterator, object_t::iterator>::type;
+            
+            
+            explicit var_iterator(const array_iterator &i)
+            :_iter(i)
+            {}
+            
+            explicit var_iterator(const object_iterator &i)
+            :_iter(i)
+            {}
+            
+            void swap(var_iterator& other) noexcept
+            {
+                using std::swap;
+                swap(_iter, other._iter);
+            }
+            
+            var_iterator& operator++ () // Pre-increment
+            {
+                if (_iter.which() == 0) ++_iter.template get<array_iterator>();
+                else ++_iter.template get<object_iterator>();
+                return *this;
+            }
+            
+            var_iterator operator++ (int) // Post-increment
+            {
+                var_iterator tmp(*this);
+                if (_iter.which() == 0) ++_iter.template get<array_iterator>();
+                else ++_iter.template get<object_iterator>();
+                return tmp;
+            }
+            
+            template<class OtherType>
+            bool operator == (const var_iterator<OtherType>& rhs) const
+            {
+                return _iter == rhs._iter;
+            }
+            
+            template<class OtherType>
+            bool operator != (const var_iterator<OtherType>& rhs) const
+            {
+                return !(*this == rhs);
+            }
+            
+            var key() const {
+                if (_iter.which() == 0) {
+                    throw bad_access("Cannot access key of array iterator");
+                } else {
+                    return _iter.template get<object_iterator>()->first;
+                }
+            }
+            
+            Type& value() const {
+                if (_iter.which() == 0) {
+                    return *_iter.template get<array_iterator>();
+                } else {
+                    return _iter.template get<object_iterator>()->second;
+                }
+            }
+            
+            Type& operator* () const
+            {
+                if (_iter.which() == 0) {
+                    return *_iter.template get<array_iterator>();
+                } else {
+                    return _iter.template get<object_iterator>()->second;
+                }
+            }
+            
+            Type* operator-> () const
+            {
+                if (_iter.which() == 0) {
+                    return &(*_iter.template get<array_iterator>());
+                } else {
+                    return &(_iter.template get<object_iterator>()->second);
+                }
+            }
+            
+            operator var_iterator<const UnqualifiedType>() const
+            {
+                return var_iterator<const UnqualifiedType>(_iter);
+            }
+            
+        private:
+            
+            var_iterator(const variant<array_iterator, object_iterator> &other)
+            :_iter(other)
+            {}
+            
+            variant<array_iterator, object_iterator> _iter;
+        };
         
 #ifndef JTYPES_NO_JSON
         
@@ -886,6 +989,7 @@ namespace jtypes {
     inline bool_t var::is_function() const { return _value.which() == (int)type::function; }
     inline bool_t var::is_array() const { return _value.which() == (int)type::array; }
     inline bool_t var::is_object() const { return _value.which() == (int)type::object; }
+    inline bool_t var::is_structured() const { return is_object() || is_array(); }
     
     inline bool_t var::is_signed_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::signed_integral; }
     inline bool_t var::is_unsigned_integral() const { return is_number() && _value.get<number_t>().which() == (int)number_type::unsigned_integral; }
@@ -997,7 +1101,7 @@ namespace jtypes {
         return u;
     }
 
-    inline var var::keys() const {
+    inline array_t var::keys() const {
         array_t r;
         
         if (is_object()) {
@@ -1005,7 +1109,6 @@ namespace jtypes {
             for (auto p : o) {
                 r.push_back(var(p.first));
             }
-            std::sort(r.begin(), r.end());
         } else if (is_array()) {
             const array_t &a = _value.get<array_t>();
             for (size_t i = 0; i < a.size(); ++i) {
@@ -1013,11 +1116,11 @@ namespace jtypes {
             }
         }
         
-        return var(r);
+        return r;
         
     }
     
-    inline var var::values() const {
+    inline array_t var::values() const {
         array_t r;
         
         if (is_object()) {
@@ -1027,31 +1130,54 @@ namespace jtypes {
         } else if (is_array()) {
             r = _value.get<array_t>();
         }
-        return var(r);
+        return r;
     }
     
-    inline array_t::iterator var::begin() {
-        array_t &a = get_variant_or_convert<array_t>();
-        return a.begin();
+    inline var::iterator var::begin() {
+        if (!is_structured())
+            object_t &o = get_variant_or_convert<object_t>();
+        
+        if (is_object()) {
+            return iterator(_value.get<object_t>().begin());
+        } else {
+            return iterator(_value.get<array_t>().begin());
+        }
     }
     
-    inline array_t::iterator var::end() {
-        array_t &a = get_variant_or_convert<array_t>();
-        return a.end();
+    inline var::iterator var::end() {
+        if (!is_structured())
+            object_t &o = get_variant_or_convert<object_t>();
+        
+        if (is_object()) {
+            return iterator(_value.get<object_t>().end());
+        } else {
+            return iterator(_value.get<array_t>().end());
+        }
     }
     
-    inline array_t::const_iterator var::begin() const {
-        if (!is_array())
-            throw bad_access("Not an array.");
-        return _value.get<array_t>().begin();
+    inline var::const_iterator var::begin() const {
+        if (!is_structured())
+            throw bad_access("iterator interface requires structured type.");
+        
+        if (is_object()) {
+            return const_iterator(_value.get<object_t>().begin());
+        } else {
+            return const_iterator(_value.get<array_t>().begin());
+        }
     }
     
-    inline array_t::const_iterator var::end() const {
-        if (!is_array())
-            throw bad_access("Not an array.");
-        return _value.get<array_t>().end();
+    inline var::const_iterator var::end() const {
+        if (!is_structured())
+            throw bad_access("iterator interface requires structured type.");
+        
+        if (is_object()) {
+            return const_iterator(_value.get<object_t>().end());
+        } else {
+            return const_iterator(_value.get<array_t>().end());
+        }
     }
     
+
     inline bool var::operator==(var const& rhs) const {
         if (is_number() && rhs.is_number()) {
             return mapbox::util::apply_visitor(details::equal_numbers(), _value.get<number_t>(), rhs._value.get<number_t>());
