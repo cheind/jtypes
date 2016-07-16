@@ -194,17 +194,15 @@ namespace jtypes {
                 return !ptr || ptr->empty();
             }
 
-            bool operator==(const fnc_holder &rhs) const {
-                return ptr.get() == rhs.ptr.get();
-            }
-
-            bool operator<(const fnc_holder &rhs) const {
-                return false;
-            }
-
         private:
+            friend inline bool operator==(const function_t &lhs, const function_t &rhs);
+            friend inline bool operator<(const function_t &lhs, const function_t &rhs);
+            
             std::shared_ptr<fnc_erasure_base> ptr;
         };
+        
+        inline bool operator==(const function_t &lhs, const function_t &rhs) { return lhs.ptr.get() == rhs.ptr.get(); }
+        inline bool operator<(const function_t &lhs, const function_t &rhs) { return false; }
         
     }
 
@@ -375,9 +373,9 @@ namespace jtypes {
         oneof _value;
     };
 
-    bool operator<(const object_t &lhs, const object_t &rhs) { return false; }
-    bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
-    bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
+    inline bool operator<(const object_t &lhs, const object_t &rhs) { return false; }
+    inline bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
+    inline bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
     
     
     namespace details {
