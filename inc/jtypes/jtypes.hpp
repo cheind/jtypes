@@ -940,7 +940,7 @@ namespace jtypes {
         (*e)[path_elements[n-1]] = value;
     }
     
-    std::ostream &operator<<(std::ostream &os, const var &v) {
+    inline std::ostream &operator<<(std::ostream &os, const var &v) {
 #ifndef JTYPES_NO_JSON
         // use std::setw to format with intendation.
         os << details::to_json(v);
@@ -950,7 +950,7 @@ namespace jtypes {
         return os;
     }
     
-    std::istream &operator>>(std::istream &is, var &v) {
+    inline std::istream &operator>>(std::istream &is, var &v) {
 #ifndef JTYPES_NO_JSON
         v = from_json(is);
 #else
