@@ -228,7 +228,7 @@ TEST_CASE("jtypes allows extracting function objects")
     REQUIRE(f(1, 2) == 3);
     
     using invalid_sig = int(void);
-    REQUIRE_THROWS_AS(x.as<invalid_sig>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(x.as<invalid_sig>(), jtypes::type_error);
 }
 
 TEST_CASE("jtypes can be assigned from callables")
@@ -411,10 +411,10 @@ TEST_CASE("jtypes should handle coercion to integral types")
     using jtypes::arr;
     using jtypes::obj;
 
-    REQUIRE_THROWS_AS(jtypes::var().as<int>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var(nullptr).as<int>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var(arr({1,2,3})).as<int>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var(obj({{"a",1}})).as<int>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var().as<int>(), jtypes::type_error);
+    REQUIRE_THROWS_AS(jtypes::var(nullptr).as<int>(), jtypes::type_error);
+    REQUIRE_THROWS_AS(jtypes::var(arr({1,2,3})).as<int>(), jtypes::type_error);
+    REQUIRE_THROWS_AS(jtypes::var(obj({{"a",1}})).as<int>(), jtypes::type_error);
     
     REQUIRE(jtypes::var(true).as<int>() == 1);
     REQUIRE(jtypes::var(false).as<int>() == 0);
@@ -436,10 +436,10 @@ TEST_CASE("jtypes should handle coercion to floating point types")
     using jtypes::arr;
     using jtypes::obj;
 
-    REQUIRE_THROWS_AS(jtypes::var().as<float>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var(nullptr).as<float>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var(arr({1,2,3})).as<double>(), jtypes::bad_access);
-    REQUIRE_THROWS_AS(jtypes::var(obj({{"a",1}})).as<float>(), jtypes::bad_access);
+    REQUIRE_THROWS_AS(jtypes::var().as<float>(), jtypes::type_error);
+    REQUIRE_THROWS_AS(jtypes::var(nullptr).as<float>(), jtypes::type_error);
+    REQUIRE_THROWS_AS(jtypes::var(arr({1,2,3})).as<double>(), jtypes::type_error);
+    REQUIRE_THROWS_AS(jtypes::var(obj({{"a",1}})).as<float>(), jtypes::type_error);
     
     REQUIRE(jtypes::var(true).as<float>() == 1.f);
     REQUIRE(jtypes::var(false).as<float>() == 0.f);

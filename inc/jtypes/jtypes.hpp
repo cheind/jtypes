@@ -107,19 +107,6 @@ namespace jtypes {
         
     };
     
-    class bad_access : public std::logic_error {
-        
-    public:
-        explicit bad_access(const std::string& what_arg)
-        : logic_error(what_arg) {
-        }
-        
-        explicit bad_access(const char* what_arg)
-        : logic_error(what_arg) {
-        }
-        
-    };
-    
     class syntax_error : public std::logic_error {
         
     public:
@@ -186,30 +173,30 @@ namespace jtypes {
             std::function<Sig> as() const {
                 fnc_wrapper<Sig> * g = dynamic_cast<fnc_wrapper<Sig> *>(ptr.get());
                 if (g == nullptr) {
-                    throw bad_access("Could not convert stored signature to target function signature");
-                } else {
-                    return g->f;
+                    throw type_error("stored function signature not convertible to target signature");
                 }
+                
+                return g->f;
             }
 
             template<typename R, typename ...Args>
             R invoke(Args && ... args) const {
                 std::function<R(Args...)> f = as<R(Args...)>();
-                if (f) {
-                    return f(std::forward<Args>(args)...);
-                } else {
-                    throw std::bad_cast();
+                if (!f) {
+                    throw type_error("empty function called");
                 }
+                return f(std::forward<Args>(args)...);
             }
 
             template<typename Sig, typename ...Args>
             typename result_of_sig<Sig>::type invoke_with_signature(Args && ... args) const {
                 const auto &f = as<Sig>();
-                if (f) {
-                    return f(std::forward<Args>(args)...);
-                } else {
-                    throw bad_access("Failed to invoke function. Function signature was ok, but function is empty.");
+                
+                if (!f) {
+                    throw type_error("empty function called");
                 }
+                
+                return f(std::forward<Args>(args)...);
             }
 
             bool empty() const {
@@ -462,7 +449,7 @@ namespace jtypes {
                 try {
                     return NumberType(std::stol(v));
                 } catch (std::exception) {
-                    throw bad_access("Failed to coerce type from string to integral type.");
+                    throw type_error("failed to coerce type from string to integral type");
                 }
             }
             
@@ -471,7 +458,7 @@ namespace jtypes {
                 try {
                     return NumberType(std::stoul(v));
                 } catch (std::exception) {
-                    throw bad_access("Failed to coerce type from string to integral type.");
+                    throw type_error("failed to coerce type from string to integral type");
                 }
             }
             
@@ -480,7 +467,7 @@ namespace jtypes {
                 try {
                     return NumberType(std::stod(v));
                 } catch (std::exception) {
-                    throw bad_access("Failed to coerce type from string to integral type.");
+                    throw type_error("failed to coerce type from string to integral type");
                 }
             }
             
@@ -495,7 +482,7 @@ namespace jtypes {
             
             template<class T>
             NumberType operator()(const T &t, DisableIfNumberType<T> *unused=0) const {
-                throw bad_access("Failed to coerce type to integral type.");
+                throw type_error("failed to coerce type to integral type");
             }
         };
 
@@ -1120,8 +1107,8 @@ namespace jtypes {
         else if (is_function()) return vtype::function;
         else if (is_array()) return vtype::array;
         else if (is_object()) return vtype::object;
-        else
-            throw bad_access("unknown type");
+        
+        throw range_error("unknown type");
     }
     
     inline bool var::is_undefined() const { return _value.is<undefined_t>(); }
