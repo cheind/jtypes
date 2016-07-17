@@ -430,7 +430,8 @@ namespace jtypes {
             string_t tok;
             
             while(std::getline(iss, tok, separator)) {
-                elems.push_back(tok);
+                if (!tok.empty())
+                    elems.push_back(tok);
             }
             
             return elems;

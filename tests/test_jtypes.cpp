@@ -856,6 +856,9 @@ TEST_CASE("jtypes should support split")
 {
     jtypes::var s = "a.b.c";
     REQUIRE(s.split('.') == jtypes::arr({"a", "b", "c"}));
+    
+    s = "a..b.c.";
+    REQUIRE(s.split('.') == jtypes::arr({"a", "b", "c"}));
 }
 
 TEST_CASE("jtypes undefined behaviour should mimic ECMAScript 5 behaviour")
