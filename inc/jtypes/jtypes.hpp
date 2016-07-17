@@ -74,6 +74,9 @@ namespace jtypes {
         object,
     };
     
+    using object = object_t;
+    using array = array_t;
+    
     var arr();
     var arr(std::initializer_list<var> v);
     template<typename T> var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category * = nullptr);

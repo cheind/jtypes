@@ -13,6 +13,17 @@ of MIT license. See the LICENSE file for details.
 
 #include <jtypes/jtypes.hpp>
 
+TEST_CASE("other inits")
+{
+    
+    jtypes::var x = jtypes::array {1,"2",3};
+    jtypes::var y = jtypes::object {
+        {"a", 2},
+        {"b", 3},
+        {"c", jtypes::array{true, false}}
+    };
+}
+
 
 TEST_CASE("jtypes can be initialized from simple types")
 {
