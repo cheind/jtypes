@@ -392,7 +392,8 @@ namespace jtypes {
         
         var split(const var &separator) const;
         
-        var &create_path(const var &path, const var &value = obj());
+        var &at(const var &path);
+        const var &at(const var &path) const;
         
     private:
         typedef variant<
@@ -781,32 +782,6 @@ namespace jtypes {
             }
             
             return true;
-        }
-        
-        inline void create_path(var &root, const var &path, const var &value = obj()) {
-            
-            var path_elements = path.is_array() ? path : var(path.as<string_t>()).split('.');
-            
-            if (path_elements.size() == 0)
-                throw range_error("create_path requires at least one path element.");
-            
-            if (!root.is_object()) {
-                root = obj();
-            }
-            
-            const size_t n = (size_t)path_elements.size();
-            
-            var *e = &root;
-            for (size_t i = 0; i < n - 1; ++i) {
-                const string_t pe = path_elements[i].as<string_t>();
-                var &c = (*e)[pe];
-                if (!c.is_object()) {
-                    c = obj();
-                }
-                e = &c;
-            }
-            
-            (*e)[path_elements[n-1]] = value;
         }
         
         inline json to_json(const var &v, bool *should_discard = 0) {
@@ -1364,18 +1339,59 @@ namespace jtypes {
         const string_t s_delim = delim.as<string_t>();
         
         if (s_delim.size() != 1) {
-            throw range_error("split requires the deliminator to be a single character.");
+            throw range_error("split() requires the deliminator to be a single character.");
         }
         
         return arr(details::split(s_src, s_delim.at(0)));
     }
     
-    inline var &var::create_path(const var &path, const var &value) {
+    inline var &var::at(const var &path) {
         if (!is_object())
-            throw type_error("create_path requires object type.");
+            throw type_error("at() requires object type.");
         
-        details::create_path(*this, path, value);
-        return *this;
+        var elems = path.is_array() ? path : var(path.as<string_t>()).split('.');
+        
+        if (elems.size() == 0)
+            return *this;
+        
+        const int n = (int)elems.size();
+        
+        var *e = this;
+        for (size_t i = 0; i < n-1; ++i) {
+            const string_t pe = elems[i].as<string_t>();
+            var &c = (*e)[pe];
+            if (!c.is_object()) {
+                c = obj();
+            }
+            e = &c;
+        }
+        
+        return (*e)[elems[n-1]];
+    }
+    
+    
+    inline const var &var::at(const var &path) const {
+        if (!is_object())
+            throw type_error("at() requires object type.");
+        
+        var elems = path.is_array() ? path : var(path.as<string_t>()).split('.');
+        
+        if (elems.size() == 0)
+            return *this;
+        
+        const int n = (int)elems.size();
+        
+        const var *e = this;
+        for (size_t i = 0; i < n; ++i) {
+            const string_t pe = elems[i].as<string_t>();
+            const var &c = (*e)[pe];
+            if (c.is_undefined()) {
+                return c;
+            }
+            e = &c;
+        }
+        
+        return *e;
     }
 }
 

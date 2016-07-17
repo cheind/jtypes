@@ -507,34 +507,40 @@ TEST_CASE("jtypes should allow nested object creation")
 {
     jtypes::var x = jtypes::obj();
     
-    x.create_path("first.number", jtypes::var(3));
-    x.create_path("first.string", jtypes::var("hello world"));
+    x.at("first.number") = jtypes::var(3);
+    x.at("first.string") = jtypes::var("hello world");
     
     REQUIRE(x.is_object());
     REQUIRE(x["first"]["number"].as<int>() == 3);
     REQUIRE(x["first"]["string"].as<std::string>() == "hello world");
     
-    // const
-    
-    const jtypes::var &xx = x;
-    REQUIRE(xx.is_object());
-    REQUIRE(xx["first"]["number"].as<int>() == 3);
-    
-    
-    // No value given, implicitly creates an object.
+    // No value given, implicitly creates undefined object leaf
     x = jtypes::obj();
-    x.create_path("a.b.c");
-    REQUIRE(x["a"]["b"]["c"].is_object());
+    x.at("a.b.c");
+    REQUIRE(x["a"]["b"]["c"].is_undefined());
     
     // Create path should also support an array instead of string
     x = jtypes::obj();
-    x.create_path(jtypes::arr({"a", "b", "c"}));
+    x.at(jtypes::arr({"a", "b", "c"})) = jtypes::obj();
     REQUIRE(x["a"]["b"]["c"].is_object());
     
     // As a side node it should also support non string types.
     x = jtypes::obj();
-    x.create_path(jtypes::arr({1, 2, "c"}));
+    x.at(jtypes::arr({1, 2, "c"})) = jtypes::obj();
     REQUIRE(x["1"]["2"]["c"].is_object());
+    
+    // In const context similar no path can be created, but existing ones can be queried.
+    x = jtypes::obj();
+    x.at("first.number.first") = jtypes::var(3);
+    x.at("first.string") = jtypes::var("hello world");
+    x.at("first.empty") = jtypes::obj();
+    
+    const jtypes::var &xx = x;
+    REQUIRE(xx.at("first.number.first") == 3);
+    REQUIRE(xx.at("first.string") == "hello world");
+    REQUIRE(xx.at("first.empty").is_object());
+    REQUIRE(xx.at("first.empty.x").is_undefined());
+    REQUIRE((xx.at("first.empty.x.y.k") | 5) == 5);
 }
 
 
