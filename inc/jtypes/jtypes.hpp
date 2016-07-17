@@ -918,7 +918,8 @@ namespace jtypes {
         
         var *e = &root;
         for (size_t i = 0; i < n - 1; ++i) {
-            var &c = (*e)[path_elements[i]];
+            const string_t pe = path_elements[i].as<string_t>();
+            var &c = (*e)[pe];
             if (!c.is_object()) {
                 c = obj();
             }
