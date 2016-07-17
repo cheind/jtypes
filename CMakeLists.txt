@@ -37,6 +37,7 @@ install(FILES ${LIB_HEADERS} DESTINATION inc/jtypes)
 
 set(TEST_SOURCES
     tests/catch.hpp
+    tests/test_compile_units.cpp
     tests/test_jtypes.cpp
 )
 
