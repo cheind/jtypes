@@ -194,7 +194,7 @@ namespace jtypes {
             std::function<Sig> as() const {
                 fnc_wrapper<Sig> * g = dynamic_cast<fnc_wrapper<Sig> *>(ptr.get());
                 if (g == nullptr) {
-                    throw type_error("stored function signature not convertible to target signature");
+                    throw type_error("as() stored function signature not convertible to target signature");
                 }
                 
                 return g->f;
@@ -204,7 +204,7 @@ namespace jtypes {
             R invoke(Args && ... args) const {
                 std::function<R(Args...)> f = as<R(Args...)>();
                 if (!f) {
-                    throw type_error("empty function called");
+                    throw type_error("invoke() empty function called");
                 }
                 return f(std::forward<Args>(args)...);
             }
@@ -214,7 +214,7 @@ namespace jtypes {
                 const auto &f = as<Sig>();
                 
                 if (!f) {
-                    throw type_error("empty function called");
+                    throw type_error("invoke_with_signature() empty function called");
                 }
                 
                 return f(std::forward<Args>(args)...);
@@ -693,7 +693,7 @@ namespace jtypes {
             
             var key() const {
                 if (!_iter.valid())
-                    throw type_error("key requires a valid iterator");
+                    throw type_error("key() requires a valid iterator");
                 
                 if (_iter.which() == 0) {
                     return _iter.template get<index_array_iter_pair>().first;
@@ -704,7 +704,7 @@ namespace jtypes {
             
             Type& value() const {
                 if (!_iter.valid())
-                    throw type_error("value requires a valid iterator");
+                    throw type_error("value() requires a valid iterator");
                 
                 if (_iter.which() == 0) {
                     return *_iter.template get<index_array_iter_pair>().second;
@@ -1097,7 +1097,7 @@ namespace jtypes {
         else if (is_array()) return vtype::array;
         else if (is_object()) return vtype::object;
         
-        throw range_error("unknown type");
+        throw range_error("type() unknown type");
     }
     
     inline bool var::is_undefined() const { return _value.is<undefined_t>(); }
@@ -1134,7 +1134,7 @@ namespace jtypes {
     inline meta::if_is_function<T, std::function<T> > var::as(const var &opts) const
     {
         if (!is_function())
-            throw type_error("not a function");
+            throw type_error("as() with function signature called but cannot be coerced to function");
         
         const function_t &f = _value.get<function_t>();
         return f.as<T>();
@@ -1144,7 +1144,7 @@ namespace jtypes {
     inline typename meta::result_of_sig<Sig>::type var::invoke(Args&&... args) const
     {
         if (!is_function())
-            throw type_error("not a function");
+            throw type_error("invoke() not a function");
         
         const function_t &f = _value.get<function_t>();
         return f.invoke_with_signature<Sig>(std::forward<Args>(args)...);
@@ -1153,7 +1153,7 @@ namespace jtypes {
     // Object / Array accessors
     inline var &var::operator[](const var &key) {
         if (!is_structured()) {
-            throw type_error("operator [] requires a structured type.");
+            throw type_error("operator[] requires a structured type");
         }
         
         if (key.is_number() && is_array()) {
@@ -1169,7 +1169,7 @@ namespace jtypes {
             auto iter = o.insert(object_t::value_type(key.as<std::string>(), var()));
             return iter.first->second;
         } else {
-            throw type_error("key type and structured var type do not match.");
+            throw type_error("operator[] key type and structured var type do not match");
         }
         
     }
@@ -1177,7 +1177,7 @@ namespace jtypes {
     inline const var &var::operator[](const var &key) const {
         
         if (!is_structured()) {
-            throw type_error("operator [] requires a structured type.");
+            throw type_error("operator[] requires a structured type.");
         }
         
         if (key.is_number() && is_array()) {
@@ -1199,13 +1199,13 @@ namespace jtypes {
                 return undefined();
             }
         } else {
-            throw type_error("key type and structured var type do not match.");
+            throw type_error("operator[] key type and structured var type do not match.");
         }
     }
 
     inline void var::push_back(const var &v) {
         if (!is_array())
-            throw type_error("push_back requires array type.");
+            throw type_error("push_back() requires array type.");
         
         array_t &a = _value.get<array_t>();
         a.push_back(v);
@@ -1320,7 +1320,7 @@ namespace jtypes {
     
     inline var var::size() const {
         if (!is_structured())
-            throw type_error("size requires a structured type.");
+            throw type_error("size() requires a structured type");
         
         if (is_array()) {
             return _value.get<array_t>().size();
@@ -1339,7 +1339,7 @@ namespace jtypes {
         const string_t s_delim = delim.as<string_t>();
         
         if (s_delim.size() != 1) {
-            throw range_error("split() requires the deliminator to be a single character.");
+            throw range_error("split() requires the deliminator to be a single character");
         }
         
         return arr(details::split(s_src, s_delim.at(0)));
@@ -1347,7 +1347,7 @@ namespace jtypes {
     
     inline var &var::at(const var &path) {
         if (!is_object())
-            throw type_error("at() requires object type.");
+            throw type_error("at() requires object type");
         
         var elems = path.is_array() ? path : var(path.as<string_t>()).split('.');
         
@@ -1372,7 +1372,7 @@ namespace jtypes {
     
     inline const var &var::at(const var &path) const {
         if (!is_object())
-            throw type_error("at() requires object type.");
+            throw type_error("at() requires object type");
         
         var elems = path.is_array() ? path : var(path.as<string_t>()).split('.');
         
