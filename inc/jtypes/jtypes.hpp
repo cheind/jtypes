@@ -45,13 +45,16 @@ namespace jtypes {
         
         template<typename Type, typename UnqualifiedType = typename std::remove_cv<Type>::type>
         class var_iterator;
+        
+        struct undefined_t {};
+        inline bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
+        inline bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
     }
    
     typedef int64_t sint_t;
     typedef uint64_t uint_t;
     typedef double real_t;
-
-    struct undefined_t {};
+    typedef details::undefined_t undefined_t;
     typedef std::nullptr_t null_t;
     typedef bool bool_t;
     typedef variant<int64_t, uint64_t, double> number_t;
@@ -112,22 +115,36 @@ namespace jtypes {
         
     };
     
+    namespace meta {
+        template<typename T, typename R = void>
+        using if_is_signed_integral = typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, R>::type;
+        
+        template<typename T, typename R = void>
+        using if_is_unsigned_integral = typename std::enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value, R>::type;
+        
+        template<typename T, typename R = void>
+        using if_is_real = typename std::enable_if<std::is_floating_point<T>::value, R>::type;
+        
+        template<typename T, typename R = void>
+        using if_is_number_t = typename std::enable_if<std::is_same<T, sint_t>::value || std::is_same<T, uint_t>::value || std::is_same<T, real_t>::value, R>::type;
+        
+        template<typename T, typename R = void>
+        using if_not_is_number_t = typename std::enable_if<!std::is_same<T, sint_t>::value && !std::is_same<T, uint_t>::value && !std::is_same<T, real_t>::value, R>::type;
+        
+        template<typename T, typename R = void>
+        using if_is_function = typename std::enable_if<std::is_function<T>::value, R>::type;
+        
+        template<typename T, typename R = void>
+        using if_not_is_function = typename std::enable_if<!std::is_function<T>::value, R>::type;
+        
+        template<class>
+        struct result_of_sig;
+        
+        template <typename R, typename... Args>
+        struct result_of_sig<R(Args...)> { using type = R; };
+    }
+    
     namespace details {
-        template<typename T, typename R = void>
-        using EnableIfSignedIntegralType = typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, R>::type;
-        
-        template<typename T, typename R = void>
-        using EnableIfUnsignedIntegralType = typename std::enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value, R>::type;
-        
-        template<typename T, typename R = void>
-        using EnableIfFloatingPointType = typename std::enable_if<std::is_floating_point<T>::value, R>::type;
-        
-        template<typename T, typename R = void>
-        using EnableIfNumberType = typename std::enable_if<std::is_same<T, sint_t>::value || std::is_same<T, uint_t>::value || std::is_same<T, real_t>::value, R>::type;
-        
-        template<typename T, typename R = void>
-        using DisableIfNumberType = typename std::enable_if<!std::is_same<T, sint_t>::value && !std::is_same<T, uint_t>::value && !std::is_same<T, real_t>::value, R>::type;
-
 
         struct type_erasure_base {
             virtual ~type_erasure_base() = default;
@@ -147,12 +164,6 @@ namespace jtypes {
 
             bool empty() const { return !f; }
         };
-
-        template<class>
-        struct result_of_sig;
-
-        template <typename R, typename... Args>
-        struct result_of_sig<R(Args...)> { using type = R; };
 
         class fnc_holder {
         public:
@@ -181,7 +192,7 @@ namespace jtypes {
             }
 
             template<typename Sig, typename ...Args>
-            typename result_of_sig<Sig>::type invoke_with_signature(Args && ... args) const {
+            typename ::jtypes::meta::result_of_sig<Sig>::type invoke_with_signature(Args && ... args) const {
                 const auto &f = as<Sig>();
                 
                 if (!f) {
@@ -224,13 +235,13 @@ namespace jtypes {
         var(bool v);
         
         template<typename I>
-        var(I t, typename details::EnableIfSignedIntegralType<I>* unused = 0);
+        var(I t, typename meta::if_is_signed_integral<I>* unused = 0);
         
         template<typename I>
-        var(I t, typename details::EnableIfUnsignedIntegralType<I>* unused = 0);
+        var(I t, typename meta::if_is_unsigned_integral<I>* unused = 0);
         
         template<typename I>
-        var(I t, typename details::EnableIfFloatingPointType<I>* unused = 0);
+        var(I t, typename meta::if_is_real<I>* unused = 0);
         
         var(char v);
         
@@ -265,15 +276,15 @@ namespace jtypes {
         var &operator=(const string_t &rhs);
 
         template<typename I>
-        details::EnableIfSignedIntegralType<I, var&>
+        meta::if_is_signed_integral<I, var&>
             operator=(I t);
 
         template<typename I>
-        details::EnableIfUnsignedIntegralType<I, var&>
+        meta::if_is_unsigned_integral<I, var&>
             operator=(I t);
 
         template<typename I>
-        details::EnableIfFloatingPointType<I, var&>
+        meta::if_is_real<I, var&>
             operator=(I t);
 
         var& operator=(const array_t &rhs);
@@ -306,15 +317,15 @@ namespace jtypes {
         explicit operator T() const;
         
         template<typename T>
-        typename std::enable_if<!std::is_function<T>::value, T>::type as(const var &opts = undefined_var()) const;
+        meta::if_not_is_function<T, T> as(const var &opts = undefined_var()) const;
         
         template<typename T>
-        typename std::enable_if<std::is_function<T>::value, std::function<T> >::type as(const var &opts = undefined_var()) const;
+        meta::if_is_function<T, std::function<T> > as(const var &opts = undefined_var()) const;
         
         // Callable interface
 
         template<typename Sig, typename ...Args>
-        typename details::result_of_sig<Sig>::type
+        typename meta::result_of_sig<Sig>::type
         invoke(Args && ... args) const;
         
         // Array / Object accessors
@@ -377,8 +388,7 @@ namespace jtypes {
     };
 
     inline bool operator<(const object_t &lhs, const object_t &rhs) { return false; }
-    inline bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
-    inline bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
+
     
     
     namespace details {
@@ -438,7 +448,7 @@ namespace jtypes {
             
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, EnableIfSignedIntegralType<T> *unused=0) const {
+            NumberType operator()(const string_t &v, meta::if_is_signed_integral<T> *unused=0) const {
                 try {
                     return NumberType(std::stol(v));
                 } catch (std::exception) {
@@ -447,7 +457,7 @@ namespace jtypes {
             }
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, EnableIfUnsignedIntegralType<T> *unused=0) const {
+            NumberType operator()(const string_t &v, meta::if_is_unsigned_integral<T> *unused=0) const {
                 try {
                     return NumberType(std::stoul(v));
                 } catch (std::exception) {
@@ -456,7 +466,7 @@ namespace jtypes {
             }
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, EnableIfFloatingPointType<T> *unused=0) const {
+            NumberType operator()(const string_t &v, meta::if_is_real<T> *unused=0) const {
                 try {
                     return NumberType(std::stod(v));
                 } catch (std::exception) {
@@ -465,7 +475,7 @@ namespace jtypes {
             }
             
             template<class T>
-            NumberType operator()(const T &t, EnableIfNumberType<T> *unused=0) const {
+            NumberType operator()(const T &t, meta::if_is_number_t<T> *unused=0) const {
                 return NumberType(t); // Static cast needs to be addressed.
             }
             
@@ -474,7 +484,7 @@ namespace jtypes {
             }
             
             template<class T>
-            NumberType operator()(const T &t, DisableIfNumberType<T> *unused=0) const {
+            NumberType operator()(const T &t, meta::if_not_is_number_t<T> *unused=0) const {
                 throw type_error("failed to coerce type to integral type");
             }
         };
@@ -492,7 +502,7 @@ namespace jtypes {
             bool operator()(const object_t &v) const { return true; }
             
             template<class T>
-            bool operator()(const T &v, EnableIfNumberType<T> *unused=0) const { return v != T(0); };
+            bool operator()(const T &v, meta::if_is_number_t<T> *unused=0) const { return v != T(0); };
             
             bool operator()(const number_t &v) const {
                 return apply_visitor(*this, v);
@@ -515,7 +525,7 @@ namespace jtypes {
             string_t operator()(const object_t &v) const { return "object"; }
             
             template<class T>
-            string_t operator()(const T &v, EnableIfNumberType<T> *unused=0) const { 
+            string_t operator()(const T &v, meta::if_is_number_t<T> *unused=0) const {
                 return std::to_string(v); 
             };
 
@@ -940,17 +950,17 @@ namespace jtypes {
     }
     
     template<typename I>
-    inline var::var(I t, typename details::EnableIfSignedIntegralType<I>* unused)
+    inline var::var(I t, typename meta::if_is_signed_integral<I>* unused)
     : _value(number_t(static_cast<int64_t>(t))) {
     }
     
     template<typename I>
-    inline var::var(I t, typename details::EnableIfUnsignedIntegralType<I>* unused)
+    inline var::var(I t, typename meta::if_is_unsigned_integral<I>* unused)
     : _value(number_t(static_cast<uint64_t>(t))) {
     }
     
     template<typename I>
-    inline var::var(I t, typename details::EnableIfFloatingPointType<I>* unused)
+    inline var::var(I t, typename meta::if_is_real<I>* unused)
     : _value(number_t(static_cast<double>(t))) {
     }
     
@@ -1053,21 +1063,21 @@ namespace jtypes {
     
     
     template<typename I>
-    inline details::EnableIfSignedIntegralType<I, var&>
+    inline meta::if_is_signed_integral<I, var&>
     var::operator=(I t) {
         _value = number_t(static_cast<int64_t>(t));
         return *this;
     }
     
     template<typename I>
-    inline details::EnableIfUnsignedIntegralType<I, var&>
+    inline meta::if_is_unsigned_integral<I, var&>
     var::operator=(I t) {
         _value = number_t(static_cast<uint64_t>(t));
         return *this;
     }
     
     template<typename I>
-    inline details::EnableIfFloatingPointType<I, var&>
+    inline meta::if_is_real<I, var&>
     var::operator=(I t) {
         _value = number_t(static_cast<double>(t));
         return *this;
@@ -1113,14 +1123,14 @@ namespace jtypes {
     }
     
     template<typename T>
-    inline typename std::enable_if<!std::is_function<T>::value, T>::type var::as(const var &opts) const
+    inline meta::if_not_is_function<T, T> var::as(const var &opts) const
     {
         details::coerce<T> visitor = {opts};
         return apply_visitor(visitor, _value);
     }
     
     template<typename T>
-    inline typename std::enable_if<std::is_function<T>::value, std::function<T> >::type var::as(const var &opts) const
+    inline meta::if_is_function<T, std::function<T> > var::as(const var &opts) const
     {
         if (!is_function())
             throw type_error("not a function");
@@ -1130,7 +1140,7 @@ namespace jtypes {
     }
     
     template<typename Sig, typename... Args>
-    inline typename details::result_of_sig<Sig>::type var::invoke(Args&&... args) const
+    inline typename meta::result_of_sig<Sig>::type var::invoke(Args&&... args) const
     {
         if (!is_function())
             throw type_error("not a function");
