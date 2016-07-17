@@ -11,7 +11,7 @@ of MIT license. See the LICENSE file for details.
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-#include <jtypes/jtypes.h>
+#include <jtypes/jtypes.hpp>
 
 
 TEST_CASE("jtypes can be initialized from simple types")
@@ -863,7 +863,7 @@ TEST_CASE("jtypes undefined behaviour should mimic ECMAScript 5 behaviour")
     jtypes::var x;
     REQUIRE_THROWS_AS(x["a"], jtypes::type_error);
     REQUIRE(x.begin() == x.end());
-    
+
     x = jtypes::obj();
     REQUIRE(x["a"].is_undefined());
     REQUIRE_THROWS_AS(x["a"]["b"], jtypes::type_error);
