@@ -507,8 +507,8 @@ TEST_CASE("jtypes should allow nested object creation")
 {
     jtypes::var x;
     
-    jtypes::create_path(x, "first.number", jtypes::var(3));
-    jtypes::create_path(x, "first.string", jtypes::var("hello world"));
+    x.create_path("first.number", jtypes::var(3));
+    x.create_path("first.string", jtypes::var("hello world"));
     
     REQUIRE(x.is_object());
     REQUIRE(x["first"]["number"].as<int>() == 3);
@@ -523,17 +523,17 @@ TEST_CASE("jtypes should allow nested object creation")
     
     // No value given, implicitly creates an object.
     x = jtypes::obj();
-    jtypes::create_path(x, "a.b.c");
+    x.create_path("a.b.c");
     REQUIRE(x["a"]["b"]["c"].is_object());
     
     // Create path should also support an array instead of string
     x = jtypes::obj();
-    jtypes::create_path(x, jtypes::arr({"a", "b", "c"}));
+    x.create_path(jtypes::arr({"a", "b", "c"}));
     REQUIRE(x["a"]["b"]["c"].is_object());
     
     // As a side node it should also support non string types.
     x = jtypes::obj();
-    jtypes::create_path(x, jtypes::arr({1, 2, "c"}));
+    x.create_path(jtypes::arr({1, 2, "c"}));
     REQUIRE(x["1"]["2"]["c"].is_object());
 }
 

@@ -39,12 +39,10 @@ namespace jtypes {
     using json = nlohmann::json;
 
     class var;
-    const var &undefined();
-    
     
     namespace details {
         class fnc_holder;
-        
+     
         template<typename Type, typename UnqualifiedType = typename std::remove_cv<Type>::type>
         class var_iterator;
         
@@ -75,6 +73,26 @@ namespace jtypes {
         array,
         object,
     };
+    
+    var arr();
+    var arr(std::initializer_list<var> v);
+    template<typename T> var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category * = nullptr);
+    template<typename T> var arr(const std::vector<T> &v);
+    
+    var obj();
+    var obj(std::initializer_list<std::pair<const string_t, var>> v);
+    
+    const var &undefined();
+    
+    template<typename Sig> var fnc(std::function<Sig> && f = std::function<Sig>());
+    
+    std::string to_json(const var &v);
+    std::string to_json(const var &v, int intend);
+    var from_json(const std::string &str);
+    var from_json(std::istream &is);
+    
+    std::ostream &operator<<(std::ostream &os, const var &v);
+    std::istream &operator>>(std::istream &is, var &v);
     
     class type_error : public std::logic_error {
         
@@ -374,6 +392,8 @@ namespace jtypes {
         
         var split(const var &separator) const;
         
+        var &create_path(const var &path, const var &value = obj());
+        
     private:
         typedef variant<
         undefined_t,
@@ -391,7 +411,6 @@ namespace jtypes {
 
     inline bool operator<(const object_t &lhs, const object_t &rhs) { return false; }
 
-    
     
     namespace details {
 
@@ -764,6 +783,32 @@ namespace jtypes {
             return true;
         }
         
+        inline void create_path(var &root, const var &path, const var &value = obj()) {
+            
+            var path_elements = path.is_array() ? path : var(path.as<string_t>()).split('.');
+            
+            if (path_elements.size() == 0)
+                throw range_error("create_path requires at least one path element.");
+            
+            if (!root.is_object()) {
+                root = obj();
+            }
+            
+            const size_t n = (size_t)path_elements.size();
+            
+            var *e = &root;
+            for (size_t i = 0; i < n - 1; ++i) {
+                const string_t pe = path_elements[i].as<string_t>();
+                var &c = (*e)[pe];
+                if (!c.is_object()) {
+                    c = obj();
+                }
+                e = &c;
+            }
+            
+            (*e)[path_elements[n-1]] = value;
+        }
+        
         inline json to_json(const var &v, bool *should_discard = 0) {
             if (should_discard) *should_discard = false;
             
@@ -877,7 +922,7 @@ namespace jtypes {
     }
     
     template<typename T>
-    inline var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category * = nullptr) {
+    inline var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category *) {
         return details::create_array(begin, end);
     }
     
@@ -900,34 +945,8 @@ namespace jtypes {
     };
     
     template<typename Sig>
-    inline var fnc(std::function<Sig> && f = std::function<Sig>()) {
+    inline var fnc(std::function<Sig> && f) {
         return var(function_t(std::forward<std::function<Sig>>(f)));
-    }
-    
-    inline void create_path(var &root, const var &path, const var &value = obj()) {
-        
-        var path_elements = path.is_array() ? path : var(path.as<string_t>()).split('.');
-        
-        if (path_elements.size() == 0)
-            throw range_error("create_path requires at least one path element.");
-        
-        if (!root.is_object()) {
-            root = obj();
-        }
-        
-        const size_t n = (size_t)path_elements.size();
-        
-        var *e = &root;
-        for (size_t i = 0; i < n - 1; ++i) {
-            const string_t pe = path_elements[i].as<string_t>();
-            var &c = (*e)[pe];
-            if (!c.is_object()) {
-                c = obj();
-            }
-            e = &c;
-        }
-        
-        (*e)[path_elements[n-1]] = value;
     }
     
     inline std::ostream &operator<<(std::ostream &os, const var &v) {
@@ -941,7 +960,7 @@ namespace jtypes {
         return is;
     }
 
-    // Implementation
+    // Implementation of var
     
     
     inline var::var()
@@ -1349,6 +1368,11 @@ namespace jtypes {
         }
         
         return arr(details::split(s_src, s_delim.at(0)));
+    }
+    
+    inline var &var::create_path(const var &path, const var &value) {
+        details::create_path(*this, path, value);
+        return *this;
     }
 }
 
