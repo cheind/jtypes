@@ -630,6 +630,9 @@ namespace jtypes {
             using array_iterator = typename std::conditional<std::is_const<Type>::value, array_t::const_iterator, array_t::iterator>::type;
             using object_iterator = typename std::conditional<std::is_const<Type>::value, object_t::const_iterator, object_t::iterator>::type;
             
+            var_iterator()
+            :_iter(mapbox::util::no_init())
+            {}
             
             explicit var_iterator(const array_iterator &i, uint_t offset)
             :_iter(index_array_iter_pair(offset, i))
@@ -661,7 +664,13 @@ namespace jtypes {
             template<class OtherType>
             bool operator == (const var_iterator<OtherType>& rhs) const
             {
-                return _iter == rhs._iter;
+                if (_iter.valid() || rhs._iter.valid()) {
+                    return _iter == rhs._iter;
+                } else {
+                    // Both are invalid
+                    return true;
+                }
+                
             }
             
             template<class OtherType>
@@ -671,6 +680,9 @@ namespace jtypes {
             }
             
             var key() const {
+                if (!_iter.valid())
+                    throw type_error("key requires a valid iterator");
+                
                 if (_iter.which() == 0) {
                     return _iter.template get<index_array_iter_pair>().first;
                 } else {
@@ -679,6 +691,9 @@ namespace jtypes {
             }
             
             Type& value() const {
+                if (!_iter.valid())
+                    throw type_error("value requires a valid iterator");
+                
                 if (_iter.which() == 0) {
                     return *_iter.template get<index_array_iter_pair>().second;
                 } else {
@@ -688,6 +703,9 @@ namespace jtypes {
             
             Type& operator* () const
             {
+                if (!_iter.valid())
+                    throw type_error("accessing iterator's value requires a valid iterator");
+                
                 if (_iter.which() == 0) {
                     return *_iter.template get<index_array_iter_pair>().second;
                 } else {
@@ -697,6 +715,9 @@ namespace jtypes {
             
             Type* operator-> () const
             {
+                if (!_iter.valid())
+                    throw type_error("accessing iterator's value requires a valid iterator");
+                
                 if (_iter.which() == 0) {
                     return &(*_iter.template get<index_array_iter_pair>().second);
                 } else {
@@ -1254,10 +1275,9 @@ namespace jtypes {
     
     inline var::iterator var::begin() {
         
-        if (!is_structured())
-            throw type_error("iterator interface requires structured type.");
-    
-        if (is_object()) {
+        if (!is_structured()) {
+            return iterator();
+        } else if (is_object()) {
             return iterator(_value.get<object_t>().begin());
         } else {
             return iterator(_value.get<array_t>().begin(), 0);
@@ -1265,22 +1285,19 @@ namespace jtypes {
     }
     
     inline var::iterator var::end() {
-        if (!is_structured())
-            throw type_error("iterator interface requires structured type.");
-        
-        if (is_object()) {
+        if (!is_structured()) {
+            return iterator();
+        } else if (is_object()) {
             return iterator(_value.get<object_t>().end());
         } else {
-            
             return iterator(_value.get<array_t>().end(), _value.get<array_t>().size());
         }
     }
     
     inline var::const_iterator var::begin() const {
-        if (!is_structured())
-            throw type_error("iterator interface requires structured type.");
-        
-        if (is_object()) {
+        if (!is_structured()) {
+            return const_iterator();
+        } else if (is_object()) {
             return const_iterator(_value.get<object_t>().begin());
         } else {
             return const_iterator(_value.get<array_t>().begin(), 0);
@@ -1288,10 +1305,9 @@ namespace jtypes {
     }
     
     inline var::const_iterator var::end() const {
-        if (!is_structured())
-            throw type_error("iterator interface requires structured type.");
-        
-        if (is_object()) {
+        if (!is_structured()) {
+            return const_iterator();
+        } else if (is_object()) {
             return const_iterator(_value.get<object_t>().end());
         } else {
             return const_iterator(_value.get<array_t>().end(), _value.get<array_t>().size());

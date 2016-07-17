@@ -821,8 +821,7 @@ TEST_CASE("jtypes should support iterators")
     
     {
         jtypes::var x = 1;
-        REQUIRE_THROWS_AS(x.begin(), jtypes::type_error);
-        REQUIRE_THROWS_AS(x.end(), jtypes::type_error);
+        REQUIRE(x.begin() == x.end());
     }
 }
 
@@ -859,13 +858,15 @@ TEST_CASE("jtypes should support split")
     REQUIRE(s.split('.') == jtypes::arr({"a", "b", "c"}));
 }
 
-TEST_CASE("jtypes behaviour should mimic ECMAScript 5 behaviour")
+TEST_CASE("jtypes undefined behaviour should mimic ECMAScript 5 behaviour")
 {
     jtypes::var x;
-    REQUIRE(x.is_undefined());
+    REQUIRE_THROWS_AS(x["a"], jtypes::type_error);
+    REQUIRE(x.begin() == x.end());
     
-    
-    REQUIRE_THROWS_AS(x.invoke<void(void)>(), jtypes::type_error);
+    x = jtypes::obj();
+    REQUIRE(x["a"].is_undefined());
+    REQUIRE_THROWS_AS(x["a"]["b"], jtypes::type_error);
 }
 
 
