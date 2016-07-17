@@ -503,7 +503,7 @@ TEST_CASE("jtypes key and values should be iterable")
 
 
 
-TEST_CASE("jtypes should allow nested object creation")
+TEST_CASE("jtypes support at for nested object creation")
 {
     jtypes::var x = jtypes::obj();
     
@@ -541,6 +541,31 @@ TEST_CASE("jtypes should allow nested object creation")
     REQUIRE(xx.at("first.empty").is_object());
     REQUIRE(xx.at("first.empty.x").is_undefined());
     REQUIRE((xx.at("first.empty.x.y.k") | 5) == 5);
+    
+    
+    jtypes::var y = jtypes::arr({1,2,3});
+    REQUIRE(y.at(0) == 1);
+    REQUIRE(y.at(1) == 2);
+    REQUIRE(y.size() == 3);
+    REQUIRE(y.at(5).is_undefined());
+    REQUIRE(y.size() == 6);
+}
+
+TEST_CASE("jtypes support clearing of structured elements") {
+    
+    jtypes::var x = jtypes::obj({
+        {"a", 1},
+        {"b", jtypes::obj({
+            {"c", 3}
+        })}
+    });
+    
+    REQUIRE(x.size() == 2);
+    REQUIRE(x["b"].size() == 1);
+    x["b"].clear();
+    REQUIRE(x["b"].is_object());
+    REQUIRE(x["b"].size() == 0);
+    
 }
 
 

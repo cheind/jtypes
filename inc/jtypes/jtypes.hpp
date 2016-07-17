@@ -395,6 +395,8 @@ namespace jtypes {
         var &at(const var &path);
         const var &at(const var &path) const;
         
+        void clear();
+        
     private:
         typedef variant<
         undefined_t,
@@ -1346,8 +1348,13 @@ namespace jtypes {
     }
     
     inline var &var::at(const var &path) {
-        if (!is_object())
-            throw type_error("at() requires object type");
+        
+        if (!is_structured())
+            throw type_error("at() requires structured type");
+        
+        if (is_array()) {
+            return (*this)[path];
+        }
         
         var elems = path.is_array() ? path : var(path.as<string_t>()).split('.');
         
@@ -1371,8 +1378,12 @@ namespace jtypes {
     
     
     inline const var &var::at(const var &path) const {
-        if (!is_object())
-            throw type_error("at() requires object type");
+        if (!is_structured())
+            throw type_error("at() requires structured type");
+        
+        if (is_array()) {
+            return (*this)[path];
+        }
         
         var elems = path.is_array() ? path : var(path.as<string_t>()).split('.');
         
@@ -1392,6 +1403,17 @@ namespace jtypes {
         }
         
         return *e;
+    }
+    
+    inline void var::clear() {
+        if (!is_structured())
+            throw type_error("at() requires structured type");
+        
+        if (is_object())
+            _value.get<object_t>().clear();
+        else if (is_array())
+            _value.get<array_t>().clear();
+        
     }
 }
 
