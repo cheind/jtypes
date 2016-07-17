@@ -505,7 +505,7 @@ TEST_CASE("jtypes key and values should be iterable")
 
 TEST_CASE("jtypes should allow nested object creation")
 {
-    jtypes::var x;
+    jtypes::var x = jtypes::obj();
     
     x.create_path("first.number", jtypes::var(3));
     x.create_path("first.string", jtypes::var("hello world"));

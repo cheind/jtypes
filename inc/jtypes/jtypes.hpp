@@ -1371,6 +1371,9 @@ namespace jtypes {
     }
     
     inline var &var::create_path(const var &path, const var &value) {
+        if (!is_object())
+            throw type_error("create_path requires object type.");
+        
         details::create_path(*this, path, value);
         return *this;
     }
