@@ -17,15 +17,10 @@
 #endif
 
 #include "variant.hpp"
+#include "json.hpp"
 
 #if defined(WIN32) || defined(_WIN32)
 #pragma warning(pop) 
-#endif
-
-#ifndef JTYPES_NO_JSON
-
-#include "json.hpp"
-
 #endif
 
 #include <string>
@@ -41,10 +36,7 @@
 namespace jtypes {
 
     using mapbox::util::variant;
-    
-#ifndef JTYPES_NO_JSON
     using json = nlohmann::json;
-#endif
 
     class var;
     
@@ -760,8 +752,6 @@ namespace jtypes {
             return true;
         }
         
-#ifndef JTYPES_NO_JSON
-        
         inline json to_json(const var &v, bool *should_discard = 0) {
             if (should_discard) *should_discard = false;
             
@@ -838,11 +828,7 @@ namespace jtypes {
                     return var();
             }
         }
-#endif
-        
     }
-    
-#ifndef JTYPES_NO_JSON
     
     inline std::string to_json(const var &v) {
         return details::to_json(v).dump();
@@ -869,8 +855,6 @@ namespace jtypes {
             throw syntax_error(e.what());
         }
     }
-    
-#endif
     
     inline var arr() {
         return array_t();
@@ -930,21 +914,13 @@ namespace jtypes {
     }
     
     inline std::ostream &operator<<(std::ostream &os, const var &v) {
-#ifndef JTYPES_NO_JSON
         // use std::setw to format with intendation.
         os << details::to_json(v);
-#else 
-        os << "var";
-#endif
         return os;
     }
     
     inline std::istream &operator>>(std::istream &is, var &v) {
-#ifndef JTYPES_NO_JSON
         v = from_json(is);
-#else
-        throw syntax_error("no json parser available.");
-#endif
         return is;
     }
 

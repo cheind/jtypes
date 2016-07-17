@@ -20,6 +20,10 @@ set(LIB_INCLUDE_DIRS
 
 set(LIB_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/inc/jtypes/jtypes.hpp
+)
+
+set(LIB_INSTALL_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/jtypes/jtypes.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/variant/variant.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/nlohmann-json/src/json.hpp
 )
@@ -30,7 +34,7 @@ add_library(jtypes INTERFACE)
 target_include_directories(jtypes INTERFACE ${LIB_INCLUDE_DIRS})
 target_sources(jtypes INTERFACE ${LIB_HEADERS})
 
-install(FILES ${LIB_HEADERS} DESTINATION inc/jtypes)
+install(FILES ${LIB_INSTALL_FILES} DESTINATION inc/jtypes)
 
 
 # Tests
