@@ -39,6 +39,8 @@ namespace jtypes {
     using json = nlohmann::json;
 
     class var;
+    const var &undefined();
+    
     
     namespace details {
         class fnc_holder;
@@ -317,10 +319,10 @@ namespace jtypes {
         explicit operator T() const;
         
         template<typename T>
-        meta::if_not_is_function<T, T> as(const var &opts = undefined_var()) const;
+        meta::if_not_is_function<T, T> as(const var &opts = undefined()) const;
         
         template<typename T>
-        meta::if_is_function<T, std::function<T> > as(const var &opts = undefined_var()) const;
+        meta::if_is_function<T, std::function<T> > as(const var &opts = undefined()) const;
         
         // Callable interface
 
@@ -369,8 +371,6 @@ namespace jtypes {
         var &merge_from(const var &other);
         
         var split(const var &separator) const;
-        
-        static const var &undefined_var();
         
     private:
         typedef variant<
@@ -892,6 +892,11 @@ namespace jtypes {
         return details::create_object(v);
     }
     
+    inline const var &undefined() {
+        static var u;
+        return u;
+    };
+    
     template<typename Sig>
     inline var fnc(std::function<Sig> && f = std::function<Sig>()) {
         return var(function_t(std::forward<std::function<Sig>>(f)));
@@ -1185,7 +1190,7 @@ namespace jtypes {
             if (idx < a.size()) {
                 return a[idx];
             } else {
-                return undefined_var();
+                return undefined();
             }
         } else if (key.is_string() && is_object()) {
             const object_t &o = _value.get<object_t>();
@@ -1195,7 +1200,7 @@ namespace jtypes {
             if (iter != o.end()) {
                 return iter->second;
             } else {
-                return undefined_var();
+                return undefined();
             }
         } else {
             throw type_error("key type and structured var type do not match.");
@@ -1209,12 +1214,7 @@ namespace jtypes {
         array_t &a = _value.get<array_t>();
         a.push_back(v);
     }
-        
     
-    inline const var &var::undefined_var() {
-        static var u;
-        return u;
-    }
 
     inline array_t var::keys() const {
         array_t r;
