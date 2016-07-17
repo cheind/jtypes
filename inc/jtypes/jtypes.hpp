@@ -48,9 +48,7 @@ namespace jtypes {
         template<typename Type, typename UnqualifiedType = typename std::remove_cv<Type>::type>
         class var_iterator;
         
-        struct undefined_t {};
-        inline bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
-        inline bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
+        struct undefined_t;
     }
    
     typedef int64_t sint_t;
@@ -217,6 +215,10 @@ namespace jtypes {
         
         inline bool operator==(const function_t &lhs, const function_t &rhs) { return lhs.ptr.get() == rhs.ptr.get(); }
         inline bool operator<(const function_t &lhs, const function_t &rhs) { return false; }
+        
+        struct undefined_t {};
+        inline bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
+        inline bool operator<(const undefined_t &lhs, const undefined_t &rhs) { return false; }
         
     }
 
