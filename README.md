@@ -1,4 +1,4 @@
-*jtypes*
+jtypes
 ========
 
 *jtypes* is a tiny header only library bringing the JavaScript type system to C++11.
