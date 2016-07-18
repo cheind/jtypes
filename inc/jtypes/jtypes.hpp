@@ -58,8 +58,6 @@ namespace jtypes {
     var obj();
     var obj(std::initializer_list<std::pair<const std::string, var>> v);
     
-    const var &undefined();
-    
     template<typename Sig> var fnc(std::function<Sig> && f = std::function<Sig>());
     
     std::string to_json(const var &v);
@@ -227,6 +225,8 @@ namespace jtypes {
         typedef std::vector<var> array_t;
         typedef std::map<std::string, var> object_t;
 
+
+
         enum class vtype {
             undefined = 0,
             null,
@@ -243,6 +243,14 @@ namespace jtypes {
         typedef details::var_iterator<var> iterator;
         typedef details::var_iterator<var const> const_iterator;
         typedef var value_type;
+
+
+        using undefined = undefined_t;
+        using object = object_t;
+        using array = array_t;
+
+        template<typename Sig>
+        using function = std::function<Sig>;
         
         // Value initializers
         
@@ -268,6 +276,9 @@ namespace jtypes {
         var(const std::string &v);
         
         var(std::string &&v);
+
+        var(const undefined_t &v);
+        var(undefined_t &&v);
 
         // Function initializers
 
@@ -313,6 +324,9 @@ namespace jtypes {
 
         var &operator=(const function_t &rhs);
         var &operator=(function_t &&rhs);
+
+        var &operator=(const undefined_t &rhs);
+        var &operator=(undefined_t &&rhs);
         
         // Type queries
         vtype type() const;
@@ -393,6 +407,8 @@ namespace jtypes {
         const var &at(const var &path) const;
         
         void clear();
+
+        const var& global_undefined() const;
         
     private:
         typedef variant<
@@ -915,11 +931,6 @@ namespace jtypes {
         return details::create_object(v);
     }
     
-    inline const var &undefined() {
-        static var u;
-        return u;
-    };
-    
     template<typename Sig>
     inline var fnc(std::function<Sig> && f) {
         return var(var::function_t(std::forward<std::function<Sig>>(f)));
@@ -982,6 +993,14 @@ namespace jtypes {
     inline var::var(std::string &&v)
     : _value(std::move(v)) {
     }
+
+    inline var::var(const undefined_t &v)
+    : _value(v) 
+    {}
+
+    inline var::var(undefined_t &&v)
+        : _value(std::move(v))             
+    {}
 
     inline var::var(const function_t & v) 
         :_value(v)
@@ -1059,6 +1078,16 @@ namespace jtypes {
     }
 
     inline var & var::operator=(function_t && rhs) {
+        _value = std::move(rhs);
+        return *this;
+    }
+
+    inline var & var::operator=(const undefined_t & rhs) {
+        _value = rhs;
+        return *this;
+    }
+
+    inline var & var::operator=(undefined_t && rhs) {
         _value = std::move(rhs);
         return *this;
     }
@@ -1191,7 +1220,7 @@ namespace jtypes {
             if (idx < a.size()) {
                 return a[idx];
             } else {
-                return undefined();
+                return var::global_undefined();
             }
         } else if (key.is_string() && is_object()) {
             const object_t &o = _value.get<object_t>();
@@ -1201,7 +1230,7 @@ namespace jtypes {
             if (iter != o.end()) {
                 return iter->second;
             } else {
-                return undefined();
+                return var::global_undefined();
             }
         } else {
             throw type_error("operator[] key type and structured var type do not match.");
@@ -1417,6 +1446,11 @@ namespace jtypes {
         else if (is_array())
             _value.get<array_t>().clear();
         
+    }
+
+    inline const var & var::global_undefined() const {
+        static var u = undefined();
+        return u;
     }
 }
 
