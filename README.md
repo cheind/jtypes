@@ -3,7 +3,7 @@
 
 *jtypes* is a tiny header only library bringing the JavaScript type system to C++11.
 
-The core object provided is `jtypes::jtype`. A jtype object represents one of the available Javascript (ES5) types:  `undefined`, `null`, `bool`, `number`, `string`, `array`, `object` and `function`.
+The core object provided is `jtypes::jtype`. A jtype object represents one of the following Javascript (ES5) types:  `undefined`, `null`, `bool`, `number`, `string`, `array`, `object` and `function`.
 
 In this spirit the library is similar to C++ JSON libraries around, but has the additional benefit of being able to represent functions and undefined types. The following example crafts a structured type representing a box.
 
