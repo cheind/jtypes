@@ -206,16 +206,6 @@ namespace jtypes {
     
     class var {
     public:
-
-        typedef details::undefined_t undefined_t;
-        typedef std::nullptr_t null_t;
-        typedef variant<std::int64_t, std::uint64_t, double> number_t;
-        typedef details::fnc_holder function_t;
-        typedef std::vector<var> array_t;
-        typedef std::map<std::string, var> object_t;
-
-
-
         enum class vtype {
             undefined = 0,
             null,
@@ -229,6 +219,13 @@ namespace jtypes {
             object,
         };
         
+        using undefined_t = details::undefined_t ;
+        using null_t = std::nullptr_t ;
+        using number_t = variant<std::int64_t, std::uint64_t, double>;
+        using function_t = details::fnc_holder;
+        using array_t = std::vector<var>;
+        using object_t = std::map<std::string, var>;
+
         typedef details::var_iterator<var> iterator;
         typedef details::var_iterator<var const> const_iterator;
         typedef var value_type;
