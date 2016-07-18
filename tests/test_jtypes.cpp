@@ -14,27 +14,6 @@ of MIT license. See the LICENSE file for details.
 #include <jtypes/jtypes.hpp>
 #include <jtypes/jtypes_io.hpp>
 
-TEST_CASE("other inits")
-{
-    using jtypes::jtype;
-
-    using sig = int(void);
-   
-    jtype x = jtype::array {1,"2",3};
-    jtype y = jtype::object {
-        {"a", 2},
-        {"b", 3},
-        {"c", jtype::array{true, false}},
-        {"d", jtype::function<sig>([]() {return 1; } )}
-    };
-
-    //jtype f = jtype::function<sig>([]() {return 1; });
-
-
-    
-}
-
-
 TEST_CASE("jtypes can be initialized from simple types")
 {
     using jtypes::jtype;
