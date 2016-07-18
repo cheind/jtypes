@@ -183,26 +183,24 @@ struct functor {
 
 TEST_CASE("jtypes can be initialized from callables") 
 {
-    using jtypes::fnc;
-
     using sig = std::string(const std::string&);
     
     {
-        jtypes::var x(fnc<sig>(&free_func));
-        REQUIRE(x.is_function());
-        REQUIRE(x.type() == jtypes::var::vtype::function);
-        REQUIRE(x.invoke<sig>("hello world") == "hello world");
+        jtypes::var x(jtypes::var::function<sig>(&free_func));
+        //REQUIRE(x.is_function());
+        //REQUIRE(x.type() == jtypes::var::vtype::function);
+        //REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
-
+    /*
     {
         functor f;
-        jtypes::var x(fnc<sig>(f));
+        jtypes::var x(jtypes::var::function<sig>(f));
         REQUIRE(x.is_function());
         REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
 
     {
-        jtypes::var x(fnc<sig>([](const std::string &str) { return str; }));
+        jtypes::var x(jtypes::var::function<sig>([](const std::string &str) { return str; }));
         REQUIRE(x.is_function());
         REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
@@ -212,7 +210,7 @@ TEST_CASE("jtypes can be initialized from callables")
         functor f;
         auto b = std::bind(&functor::operator(), f, _1);
 
-        jtypes::var x(fnc<sig>(b));
+        jtypes::var x(jtypes::var::function<sig>(b));
         REQUIRE(x.is_function());
         REQUIRE(x.invoke<sig>("hello world") == "hello world");
     }
@@ -226,10 +224,11 @@ TEST_CASE("jtypes can be initialized from callables")
         auto b = std::bind(&functor::moveable, f, _1);
 
         std::string input = "hello world";
-        jtypes::var x(fnc<msig>(b));
+        jtypes::var x(jtypes::var::function<msig>(b));
         REQUIRE(x.invoke<msig>(std::move(input)) == "hello world");
         REQUIRE(input.empty());
     }
+    */
 
    
 }
@@ -237,11 +236,10 @@ TEST_CASE("jtypes can be initialized from callables")
 TEST_CASE("jtypes allows extracting function objects")
 {
     
-    using jtypes::fnc;
     using sig = int(int, int);
    
     jtypes::var x;    
-    x = fnc<sig>([](int x, int y) { return x + y; });
+    x = jtypes::var::function<sig>([](int x, int y) { return x + y; });
     
     
     std::function<sig> f = x.as<sig>();
@@ -253,12 +251,10 @@ TEST_CASE("jtypes allows extracting function objects")
 
 TEST_CASE("jtypes can be assigned from callables")
 {
-    
-    using jtypes::fnc;
     using sig = int(int, int);
     
     jtypes::var x;
-    x = fnc<sig>([](int x, int y) { return x + y; });
+    x = jtypes::var::function<sig>([](int x, int y) { return x + y; });
     REQUIRE(x.is_function());
     REQUIRE(x.type() == jtypes::var::vtype::function);
     REQUIRE(x.invoke<sig>(1, 2) == 3);
@@ -388,8 +384,6 @@ TEST_CASE("jtypes can be assigned from dictionaries")
 TEST_CASE("jtypes should be convertible to primitive types")
 {
     
-    using jtypes::fnc;
-    
     // boolean
 
     REQUIRE(!jtypes::var());
@@ -407,8 +401,8 @@ TEST_CASE("jtypes should be convertible to primitive types")
     REQUIRE(!jtypes::var(""));
 
     using sig = bool(void);
-    REQUIRE(jtypes::var(fnc<sig>([]() {return true; })));
-    REQUIRE(!jtypes::var(fnc<sig>()));
+    REQUIRE(jtypes::var(jtypes::var::function<sig>([]() {return true; })));
+    REQUIRE(!jtypes::var(jtypes::var::function<sig>()));
     
     REQUIRE(jtypes::var(jtypes::var::array({1,2,3})));
     REQUIRE(jtypes::var(jtypes::var::object({{"a", 10}})));
@@ -468,8 +462,6 @@ TEST_CASE("jtypes should handle coercion to floating point types")
 
 TEST_CASE("jtypes should handle coercion to string")
 {
-    using jtypes::fnc;
-    
 
     REQUIRE(jtypes::var().as<std::string>() == "undefined");
     REQUIRE(jtypes::var(nullptr).as<std::string>() == "null");
@@ -482,7 +474,7 @@ TEST_CASE("jtypes should handle coercion to string")
     REQUIRE(jtypes::var(jtypes::var::object({{"a", "x"}})).as<std::string>() == "object");
 
     using sig = int(void);
-    REQUIRE(jtypes::var(fnc<sig>([]() {return -1;})).as<std::string>() == "function");
+    REQUIRE(jtypes::var(jtypes::var::function<sig>([]() {return -1;})).as<std::string>() == "function");
     
 }
 
@@ -630,8 +622,6 @@ TEST_CASE("jtypes should support default values")
 
 TEST_CASE("jtypes should support equality comparison")
 {
-    
-    using jtypes::fnc;
 
     // Numbers 
 
@@ -693,8 +683,8 @@ TEST_CASE("jtypes should support equality comparison")
     
     // Functions
     
-    jtypes::var f1 = fnc<bool(void)>([](){return true;});
-    jtypes::var f2 = fnc<bool(void)>([](){return true;});
+    jtypes::var f1 = jtypes::var::function<bool(void)>([](){return true;});
+    jtypes::var f2 = jtypes::var::function<bool(void)>([](){return true;});
     jtypes::var f3 = f1;
     
     REQUIRE(f1 != f2);
@@ -769,7 +759,7 @@ TEST_CASE("jtypes should support JSON")
     jtypes::var u = jtypes::var::object({
         {"a", jtypes::var()},
         {"b", jtypes::var::array({1,jtypes::var(),2})},
-        {"c", jtypes::fnc<int(int)>()}
+        {"c", jtypes::var::function<int(int)>()}
     });
 
     std::stringstream str;

@@ -48,8 +48,6 @@ namespace jtypes {
         
         struct undefined_t;
     }
-          
-    template<typename Sig> var fnc(std::function<Sig> && f = std::function<Sig>());
     
     std::string to_json(const var &v);
     std::string to_json(const var &v, int intend);
@@ -239,9 +237,6 @@ namespace jtypes {
         using undefined = undefined_t;
         using object = object_t;
         using array = array_t;
-
-        template<typename Sig>
-        using function = std::function<Sig>;
         
         // Value initializers
         
@@ -273,7 +268,7 @@ namespace jtypes {
 
         // Function initializers
         template<class Sig, typename = meta::if_is_function<Sig> >
-        var(std::function<Sig> && v);
+        static var function(std::function<Sig> && v = std::function<Sig>());
 
         var(const function_t &v);
         var(function_t &&v);
@@ -897,11 +892,6 @@ namespace jtypes {
             throw syntax_error(e.what());
         }
     }    
-        
-    template<typename Sig>
-    inline var fnc(std::function<Sig> && f) {
-        return var(var::function_t(std::forward<std::function<Sig>>(f)));
-    }
     
     inline std::ostream &operator<<(std::ostream &os, const var &v) {
         // use std::setw to format with intendation.
@@ -945,9 +935,9 @@ namespace jtypes {
     }
 
     template<class Sig, typename>
-    inline var::var(std::function<Sig>&& v) 
-        :_value(function_t(std::forward<std::function<Sig>>(v)))
-    {}
+    inline var var::function(std::function<Sig>&& v) {
+        return var(var::function_t(std::forward<std::function<Sig>>(v)));
+    }
     
     inline var::var(const char* v)
     : _value(std::string(v)) {
