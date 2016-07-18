@@ -231,6 +231,7 @@ namespace jtypes {
         typedef var value_type;
 
 
+        using null = null_t;
         using undefined = undefined_t;
         using object = object_t;
         using array = array_t;
