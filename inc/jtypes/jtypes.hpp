@@ -49,14 +49,10 @@ namespace jtypes {
         struct undefined_t;
     }
    
-    typedef int64_t sint_t;
-    typedef uint64_t uint_t;
-    typedef double real_t;
+
     typedef details::undefined_t undefined_t;
     typedef std::nullptr_t null_t;
-    typedef bool bool_t;
-    typedef variant<int64_t, uint64_t, double> number_t;
-    typedef std::string string_t;
+    typedef variant<std::int64_t, std::uint64_t, double> number_t;
     typedef details::fnc_holder function_t;
     typedef std::vector<var> array_t;
     typedef std::map<std::string, var> object_t;
@@ -83,7 +79,7 @@ namespace jtypes {
     template<typename T> var arr(const std::vector<T> &v);
     
     var obj();
-    var obj(std::initializer_list<std::pair<const string_t, var>> v);
+    var obj(std::initializer_list<std::pair<const std::string, var>> v);
     
     const var &undefined();
     
@@ -147,10 +143,10 @@ namespace jtypes {
         using if_is_real = typename std::enable_if<std::is_floating_point<T>::value, R>::type;
         
         template<typename T, typename R = void>
-        using if_is_number_t = typename std::enable_if<std::is_same<T, sint_t>::value || std::is_same<T, uint_t>::value || std::is_same<T, real_t>::value, R>::type;
+        using if_is_number_t = typename std::enable_if<std::is_same<T, std::int64_t>::value || std::is_same<T, std::uint64_t>::value || std::is_same<T, double>::value, R>::type;
         
         template<typename T, typename R = void>
-        using if_not_is_number_t = typename std::enable_if<!std::is_same<T, sint_t>::value && !std::is_same<T, uint_t>::value && !std::is_same<T, real_t>::value, R>::type;
+        using if_not_is_number_t = typename std::enable_if<!std::is_same<T, std::int64_t>::value && !std::is_same<T, std::uint64_t>::value && !std::is_same<T, double>::value, R>::type;
         
         template<typename T, typename R = void>
         using if_is_function = typename std::enable_if<std::is_function<T>::value, R>::type;
@@ -272,7 +268,7 @@ namespace jtypes {
         
         var(const char* v);
         
-        var(const string_t &v);
+        var(const std::string &v);
         
         var(std::string &&v);
 
@@ -298,7 +294,7 @@ namespace jtypes {
         var &operator=(bool rhs);
         var &operator=(char rhs);
         var &operator=(const char* v);
-        var &operator=(const string_t &rhs);
+        var &operator=(const std::string &rhs);
 
         template<typename I>
         meta::if_is_signed_integral<I, var&>
@@ -405,9 +401,9 @@ namespace jtypes {
         typedef variant<
         undefined_t,
         null_t,
-        bool_t,
+        bool,
         number_t,
-        string_t,
+        std::string,
         function_t,
         array_t,
         object_t
@@ -453,11 +449,11 @@ namespace jtypes {
             return join(input, separator, [](const range_value &v) {return v;});
         }
         
-        inline std::vector<string_t> split(const string_t &src, char separator) {
+        inline std::vector<std::string> split(const std::string &src, char separator) {
         
-            std::vector<string_t> elems;
+            std::vector<std::string> elems;
             std::istringstream iss(src);
-            string_t tok;
+            std::string tok;
             
             while(std::getline(iss, tok, separator)) {
                 if (!tok.empty())
@@ -472,11 +468,11 @@ namespace jtypes {
             
             var opts;
             
-            NumberType operator()(const bool_t &v) const { return v ? NumberType(1) : NumberType(0); }
+            NumberType operator()(const bool &v) const { return v ? NumberType(1) : NumberType(0); }
             
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, meta::if_is_signed_integral<T> *unused=0) const {
+            NumberType operator()(const std::string &v, meta::if_is_signed_integral<T> *unused=0) const {
                 try {
                     return NumberType(std::stol(v));
                 } catch (std::exception) {
@@ -485,7 +481,7 @@ namespace jtypes {
             }
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, meta::if_is_unsigned_integral<T> *unused=0) const {
+            NumberType operator()(const std::string &v, meta::if_is_unsigned_integral<T> *unused=0) const {
                 try {
                     return NumberType(std::stoul(v));
                 } catch (std::exception) {
@@ -494,7 +490,7 @@ namespace jtypes {
             }
             
             template< typename T = NumberType >
-            NumberType operator()(const string_t &v, meta::if_is_real<T> *unused=0) const {
+            NumberType operator()(const std::string &v, meta::if_is_real<T> *unused=0) const {
                 try {
                     return NumberType(std::stod(v));
                 } catch (std::exception) {
@@ -523,8 +519,8 @@ namespace jtypes {
 
             bool operator()(const undefined_t &v) const { return false; }
             bool operator()(const null_t &v) const { return false; }
-            bool operator()(const bool_t &v) const { return v; }
-            bool operator()(const string_t &v) const { return !v.empty(); }
+            bool operator()(const bool &v) const { return v; }
+            bool operator()(const std::string &v) const { return !v.empty(); }
             bool operator()(const function_t &v) const { return !v.empty(); }
             bool operator()(const array_t &v) const { return true; }
             bool operator()(const object_t &v) const { return true; }
@@ -538,47 +534,47 @@ namespace jtypes {
         };
         
         template<>
-        struct coerce<string_t> {
+        struct coerce<std::string> {
             var opts;
            
-            string_t operator()(const undefined_t &v) const { return "undefined"; }
-            string_t operator()(const null_t &v) const { return "null"; }
-            string_t operator()(const bool_t &v) const { return v ? "true" : "false"; }
-            string_t operator()(const string_t &v) const { return v; }
-            string_t operator()(const function_t &v) const { return "function"; }
-            string_t operator()(const array_t &v) const {
+            std::string operator()(const undefined_t &v) const { return "undefined"; }
+            std::string operator()(const null_t &v) const { return "null"; }
+            std::string operator()(const bool &v) const { return v ? "true" : "false"; }
+            std::string operator()(const std::string &v) const { return v; }
+            std::string operator()(const function_t &v) const { return "function"; }
+            std::string operator()(const array_t &v) const {
                 return join(v, ",", [](const var &vv) { return vv.as<std::string>(); });
             }
 
-            string_t operator()(const object_t &v) const { return "object"; }
+            std::string operator()(const object_t &v) const { return "object"; }
             
             template<class T>
-            string_t operator()(const T &v, meta::if_is_number_t<T> *unused=0) const {
+            std::string operator()(const T &v, meta::if_is_number_t<T> *unused=0) const {
                 return std::to_string(v); 
             };
 
             
-            string_t operator()(const number_t &v) const {
+            std::string operator()(const number_t &v) const {
                 return apply_visitor(*this, v);
             }
         };
 
         struct equal_numbers {
 
-            bool operator()(sint_t lhs, uint_t rhs) const {
-                return (lhs < 0) ? false : (uint_t)lhs == rhs;
+            bool operator()(std::int64_t lhs, std::uint64_t rhs) const {
+                return (lhs < 0) ? false : (std::uint64_t)lhs == rhs;
             }
 
-            bool operator()(uint_t lhs, sint_t rhs) const {
-                return (rhs < 0) ? false : (uint_t)rhs == lhs;
+            bool operator()(std::uint64_t lhs, std::int64_t rhs) const {
+                return (rhs < 0) ? false : (std::uint64_t)rhs == lhs;
             }
 
-            bool operator()(uint_t lhs, real_t rhs) const {
-                return (rhs < 0) ? false : (real_t)lhs == rhs;
+            bool operator()(std::uint64_t lhs, double rhs) const {
+                return (rhs < 0) ? false : (double)lhs == rhs;
             }
 
-            bool operator()(real_t lhs, uint_t rhs) const {
-                return (lhs < 0) ? false : (real_t)rhs == lhs;
+            bool operator()(double lhs, std::uint64_t rhs) const {
+                return (lhs < 0) ? false : (double)rhs == lhs;
             }
 
             template<class T, class U>
@@ -590,20 +586,20 @@ namespace jtypes {
         
         struct less_numbers {
             
-            bool operator()(sint_t lhs, uint_t rhs) const {
-                return (lhs < 0) ? true : (uint_t)lhs < rhs;
+            bool operator()(std::int64_t lhs, std::uint64_t rhs) const {
+                return (lhs < 0) ? true : (std::uint64_t)lhs < rhs;
             }
             
-            bool operator()(uint_t lhs, sint_t rhs) const {
-                return (rhs < 0) ? false : lhs < (uint_t)rhs;
+            bool operator()(std::uint64_t lhs, std::int64_t rhs) const {
+                return (rhs < 0) ? false : lhs < (std::uint64_t)rhs;
             }
             
-            bool operator()(uint_t lhs, real_t rhs) const {
-                return (rhs < 0.0) ? false : (real_t)lhs < rhs;
+            bool operator()(std::uint64_t lhs, double rhs) const {
+                return (rhs < 0.0) ? false : (double)lhs < rhs;
             }
             
-            bool operator()(real_t lhs, uint_t rhs) const {
-                return (lhs < 0) ? true : lhs < (real_t)rhs;
+            bool operator()(double lhs, std::uint64_t rhs) const {
+                return (lhs < 0) ? true : lhs < (double)rhs;
             }
             
             template<class T, class U>
@@ -652,7 +648,7 @@ namespace jtypes {
             :_iter(mapbox::util::no_init())
             {}
             
-            explicit var_iterator(const array_iterator &i, uint_t offset)
+            explicit var_iterator(const array_iterator &i, std::uint64_t offset)
             :_iter(index_array_iter_pair(offset, i))
             {}
             
@@ -760,7 +756,7 @@ namespace jtypes {
                 }
             }
             
-            using index_array_iter_pair = std::pair<uint_t, array_iterator>;
+            using index_array_iter_pair = std::pair<std::uint64_t, array_iterator>;
             
             var_iterator(const variant<index_array_iter_pair, object_iterator> &other)
             :_iter(other)
@@ -806,11 +802,11 @@ namespace jtypes {
                 case vtype::boolean:
                     return v.as<bool>();
                 case vtype::signed_number:
-                    return v.as<sint_t>();
+                    return v.as<std::int64_t>();
                 case vtype::unsigned_number:
-                    return v.as<uint_t>();
+                    return v.as<std::uint64_t>();
                 case vtype::real_number:
-                    return v.as<real_t>();
+                    return v.as<double>();
                 case vtype::string:
                     return v.as<std::string>();
                 case vtype::object: {
@@ -848,11 +844,11 @@ namespace jtypes {
                 case json::value_t::null:
                     return nullptr;
                 case json::value_t::number_float:
-                    return j.get<real_t>();
+                    return j.get<double>();
                 case json::value_t::number_integer:
-                    return j.get<sint_t>();
+                    return j.get<std::int64_t>();
                 case json::value_t::number_unsigned:
-                    return j.get<uint_t>();
+                    return j.get<std::uint64_t>();
                 case json::value_t::object: {
                     var v = object_t();
                     for (auto iter = j.begin(); iter != j.end(); ++iter) {
@@ -918,7 +914,7 @@ namespace jtypes {
         return object_t();
     }
     
-    inline var obj(std::initializer_list<std::pair<const string_t, var>> v) {
+    inline var obj(std::initializer_list<std::pair<const std::string, var>> v) {
         return details::create_object(v);
     }
     
@@ -982,7 +978,7 @@ namespace jtypes {
     }
     
     
-    inline var::var(const string_t &v)
+    inline var::var(const std::string &v)
     : _value(v) {
     }
     
@@ -1026,16 +1022,16 @@ namespace jtypes {
     }
     
     inline var &var::operator=(char rhs) {
-        _value = string_t(&rhs, 1);
+        _value = std::string(&rhs, 1);
         return *this;
     }
     
     inline var &var::operator=(const char *rhs) {
-        _value = string_t(rhs);
+        _value = std::string(rhs);
         return *this;
     }
     
-    inline var &var::operator=(const string_t &rhs) {
+    inline var &var::operator=(const std::string &rhs) {
         _value = rhs;
         return *this;
     }
@@ -1110,12 +1106,12 @@ namespace jtypes {
     
     inline bool var::is_undefined() const { return _value.is<undefined_t>(); }
     inline bool var::is_null() const { return _value.is<null_t>(); }
-    inline bool var::is_boolean() const { return _value.is<bool_t>(); }
+    inline bool var::is_boolean() const { return _value.is<bool>(); }
     inline bool var::is_number() const { return _value.is<number_t>(); }
-    inline bool var::is_signed_number() const { return is_number() && _value.get<number_t>().is<sint_t>(); }
-    inline bool var::is_unsigned_number() const { return is_number() && _value.get<number_t>().is<uint_t>(); }
-    inline bool var::is_real_number() const { return is_number() && _value.get<number_t>().is<real_t>(); }
-    inline bool var::is_string() const { return _value.is<string_t>(); }
+    inline bool var::is_signed_number() const { return is_number() && _value.get<number_t>().is<std::int64_t>(); }
+    inline bool var::is_unsigned_number() const { return is_number() && _value.get<number_t>().is<std::uint64_t>(); }
+    inline bool var::is_real_number() const { return is_number() && _value.get<number_t>().is<double>(); }
+    inline bool var::is_string() const { return _value.is<std::string>(); }
     inline bool var::is_function() const { return _value.is<function_t>(); }
     inline bool var::is_array() const { return _value.is<array_t>(); }
     inline bool var::is_object() const { return _value.is<object_t>(); }
@@ -1347,8 +1343,8 @@ namespace jtypes {
     }
     
     inline var var::split(const var &delim) const {
-        const string_t s_src = as<string_t>();
-        const string_t s_delim = delim.as<string_t>();
+        const std::string s_src = as<std::string>();
+        const std::string s_delim = delim.as<std::string>();
         
         if (s_delim.size() != 1) {
             throw range_error("split() requires the deliminator to be a single character");
@@ -1366,7 +1362,7 @@ namespace jtypes {
             return (*this)[path];
         }
         
-        var elems = path.is_array() ? path : var(path.as<string_t>()).split('.');
+        var elems = path.is_array() ? path : var(path.as<std::string>()).split('.');
         
         if (elems.size() == 0)
             return *this;
@@ -1375,7 +1371,7 @@ namespace jtypes {
         
         var *e = this;
         for (size_t i = 0; i < n-1; ++i) {
-            const string_t pe = elems[i].as<string_t>();
+            const std::string pe = elems[i].as<std::string>();
             var &c = (*e)[pe];
             if (!c.is_object()) {
                 c = obj();
@@ -1395,7 +1391,7 @@ namespace jtypes {
             return (*this)[path];
         }
         
-        var elems = path.is_array() ? path : var(path.as<string_t>()).split('.');
+        var elems = path.is_array() ? path : var(path.as<std::string>()).split('.');
         
         if (elems.size() == 0)
             return *this;
@@ -1404,7 +1400,7 @@ namespace jtypes {
         
         const var *e = this;
         for (size_t i = 0; i < n; ++i) {
-            const string_t pe = elems[i].as<string_t>();
+            const std::string pe = elems[i].as<std::string>();
             const var &c = (*e)[pe];
             if (c.is_undefined()) {
                 return c;
