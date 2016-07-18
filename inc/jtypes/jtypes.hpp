@@ -49,12 +49,7 @@ namespace jtypes {
         struct undefined_t;
     }
        
-    
-    var arr();
-    var arr(std::initializer_list<var> v);
-    template<typename T> var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category * = nullptr);
-    template<typename T> var arr(const std::vector<T> &v);
-    
+        
     var obj();
     var obj(std::initializer_list<std::pair<const std::string, var>> v);
     
@@ -281,6 +276,8 @@ namespace jtypes {
         var(undefined_t &&v);
 
         // Function initializers
+        template<class Sig, typename = meta::if_is_function<Sig> >
+        var(std::function<Sig> && v);
 
         var(const function_t &v);
         var(function_t &&v);
@@ -903,25 +900,7 @@ namespace jtypes {
         } catch (std::exception &e) {
             throw syntax_error(e.what());
         }
-    }
-    
-    inline var arr() {
-        return var::array_t();
-    }
-    
-    inline var arr(std::initializer_list<var> v) {
-        return details::create_array(v);
-    }
-    
-    template<typename T>
-    inline var arr(T begin, T end, typename std::iterator_traits<T>::iterator_category *) {
-        return details::create_array(begin, end);
-    }
-    
-    template<typename T>
-    inline var arr(const std::vector<T> &v) {
-        return details::create_array(std::begin(v), std::end(v));
-    }
+    }    
     
     inline var obj() {
         return var::object_t();
@@ -976,6 +955,11 @@ namespace jtypes {
     inline var::var(I t, typename meta::if_is_real<I>* unused)
     : _value(number_t(static_cast<double>(t))) {
     }
+
+    template<class Sig, typename>
+    inline var::var(std::function<Sig>&& v) 
+        :_value(function_t(std::forward<std::function<Sig>>(v)))
+    {}
     
     inline var::var(const char* v)
     : _value(std::string(v)) {
@@ -1376,7 +1360,7 @@ namespace jtypes {
             throw range_error("split() requires the deliminator to be a single character");
         }
         
-        return arr(details::split(s_src, s_delim.at(0)));
+        return details::create_array(details::split(s_src, s_delim.at(0)));
     }
     
     inline var &var::at(const var &path) {
