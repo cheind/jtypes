@@ -48,11 +48,7 @@ namespace jtypes {
         
         struct undefined_t;
     }
-       
-        
-    var obj();
-    var obj(std::initializer_list<std::pair<const std::string, var>> v);
-    
+          
     template<typename Sig> var fnc(std::function<Sig> && f = std::function<Sig>());
     
     std::string to_json(const var &v);
@@ -901,15 +897,7 @@ namespace jtypes {
             throw syntax_error(e.what());
         }
     }    
-    
-    inline var obj() {
-        return var::object_t();
-    }
-    
-    inline var obj(std::initializer_list<std::pair<const std::string, var>> v) {
-        return details::create_object(v);
-    }
-    
+        
     template<typename Sig>
     inline var fnc(std::function<Sig> && f) {
         return var(var::function_t(std::forward<std::function<Sig>>(f)));
@@ -1384,7 +1372,7 @@ namespace jtypes {
             const std::string pe = elems[i].as<std::string>();
             var &c = (*e)[pe];
             if (!c.is_object()) {
-                c = obj();
+                c = var::object();
             }
             e = &c;
         }
