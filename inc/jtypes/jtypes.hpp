@@ -48,30 +48,7 @@ namespace jtypes {
         
         struct undefined_t;
     }
-   
-
-    typedef details::undefined_t undefined_t;
-    typedef std::nullptr_t null_t;
-    typedef variant<std::int64_t, std::uint64_t, double> number_t;
-    typedef details::fnc_holder function_t;
-    typedef std::vector<var> array_t;
-    typedef std::map<std::string, var> object_t;
-    
-    enum class vtype {
-        undefined = 0,
-        null,
-        boolean,
-        signed_number,
-        unsigned_number,
-        real_number,
-        string,
-        function,
-        array,
-        object,
-    };
-    
-    using object = object_t;
-    using array = array_t;
+       
     
     var arr();
     var arr(std::initializer_list<var> v);
@@ -224,14 +201,14 @@ namespace jtypes {
             }
 
         private:
-            friend inline bool operator==(const function_t &lhs, const function_t &rhs);
-            friend inline bool operator<(const function_t &lhs, const function_t &rhs);
+            friend inline bool operator==(const fnc_holder &lhs, const fnc_holder &rhs);
+            friend inline bool operator<(const fnc_holder &lhs, const fnc_holder &rhs);
             
             std::shared_ptr<fnc_erasure_base> ptr;
         };
         
-        inline bool operator==(const function_t &lhs, const function_t &rhs) { return lhs.ptr.get() == rhs.ptr.get(); }
-        inline bool operator<(const function_t &lhs, const function_t &rhs) { return false; }
+        inline bool operator==(const fnc_holder &lhs, const fnc_holder &rhs) { return lhs.ptr.get() == rhs.ptr.get(); }
+        inline bool operator<(const fnc_holder &lhs, const fnc_holder &rhs) { return false; }
         
         struct undefined_t {};
         inline bool operator==(const undefined_t &lhs, const undefined_t &rhs) { return true; }
@@ -242,6 +219,26 @@ namespace jtypes {
     
     class var {
     public:
+
+        typedef details::undefined_t undefined_t;
+        typedef std::nullptr_t null_t;
+        typedef variant<std::int64_t, std::uint64_t, double> number_t;
+        typedef details::fnc_holder function_t;
+        typedef std::vector<var> array_t;
+        typedef std::map<std::string, var> object_t;
+
+        enum class vtype {
+            undefined = 0,
+            null,
+            boolean,
+            signed_number,
+            unsigned_number,
+            real_number,
+            string,
+            function,
+            array,
+            object,
+        };
         
         typedef details::var_iterator<var> iterator;
         typedef details::var_iterator<var const> const_iterator;
@@ -412,7 +409,7 @@ namespace jtypes {
         oneof _value;
     };
 
-    inline bool operator<(const object_t &lhs, const object_t &rhs) { return false; }
+    inline bool operator<(const var::object_t &lhs, const var::object_t &rhs) { return false; }
 
     
     namespace details {
@@ -503,7 +500,7 @@ namespace jtypes {
                 return NumberType(t); // Static cast needs to be addressed.
             }
             
-            NumberType operator()(const number_t &v) const {
+            NumberType operator()(const var::number_t &v) const {
                 return apply_visitor(*this, v);
             }
             
@@ -517,18 +514,18 @@ namespace jtypes {
         struct coerce<bool> {
             var opts;
 
-            bool operator()(const undefined_t &v) const { return false; }
-            bool operator()(const null_t &v) const { return false; }
+            bool operator()(const var::undefined_t &v) const { return false; }
+            bool operator()(const var::null_t &v) const { return false; }
             bool operator()(const bool &v) const { return v; }
             bool operator()(const std::string &v) const { return !v.empty(); }
-            bool operator()(const function_t &v) const { return !v.empty(); }
-            bool operator()(const array_t &v) const { return true; }
-            bool operator()(const object_t &v) const { return true; }
+            bool operator()(const var::function_t &v) const { return !v.empty(); }
+            bool operator()(const var::array_t &v) const { return true; }
+            bool operator()(const var::object_t &v) const { return true; }
             
             template<class T>
             bool operator()(const T &v, meta::if_is_number_t<T> *unused=0) const { return v != T(0); };
             
-            bool operator()(const number_t &v) const {
+            bool operator()(const var::number_t &v) const {
                 return apply_visitor(*this, v);
             }
         };
@@ -537,16 +534,16 @@ namespace jtypes {
         struct coerce<std::string> {
             var opts;
            
-            std::string operator()(const undefined_t &v) const { return "undefined"; }
-            std::string operator()(const null_t &v) const { return "null"; }
+            std::string operator()(const var::undefined_t &v) const { return "undefined"; }
+            std::string operator()(const var::null_t &v) const { return "null"; }
             std::string operator()(const bool &v) const { return v ? "true" : "false"; }
             std::string operator()(const std::string &v) const { return v; }
-            std::string operator()(const function_t &v) const { return "function"; }
-            std::string operator()(const array_t &v) const {
+            std::string operator()(const var::function_t &v) const { return "function"; }
+            std::string operator()(const var::array_t &v) const {
                 return join(v, ",", [](const var &vv) { return vv.as<std::string>(); });
             }
 
-            std::string operator()(const object_t &v) const { return "object"; }
+            std::string operator()(const var::object_t &v) const { return "object"; }
             
             template<class T>
             std::string operator()(const T &v, meta::if_is_number_t<T> *unused=0) const {
@@ -554,7 +551,7 @@ namespace jtypes {
             };
 
             
-            std::string operator()(const number_t &v) const {
+            std::string operator()(const var::number_t &v) const {
                 return apply_visitor(*this, v);
             }
         };
@@ -613,7 +610,7 @@ namespace jtypes {
         inline var create_array(Iter begin, Iter end) {
             using value_type = typename std::decay< decltype(*begin) >::type;
             
-            array_t a;
+            var::array_t a;
             for (; begin != end; ++begin) {
                 if (std::is_same<value_type, var>::value) {
                     a.push_back(*begin);
@@ -631,9 +628,9 @@ namespace jtypes {
         
         template<typename Range>
         inline var create_object(const Range &r) {
-            object_t o;
+            var::object_t o;
             for (auto && t : r) {
-                o.insert(object_t::value_type(t.first, t.second));
+                o.insert(var::object_t::value_type(t.first, t.second));
             }
             return var(std::move(o));
         }
@@ -641,8 +638,8 @@ namespace jtypes {
         template<typename Type, typename UnqualifiedType>
         class var_iterator : public std::iterator<std::forward_iterator_tag, UnqualifiedType, std::ptrdiff_t, Type*, Type&> {
         public:
-            using array_iterator = typename std::conditional<std::is_const<Type>::value, array_t::const_iterator, array_t::iterator>::type;
-            using object_iterator = typename std::conditional<std::is_const<Type>::value, object_t::const_iterator, object_t::iterator>::type;
+            using array_iterator = typename std::conditional<std::is_const<Type>::value, var::array_t::const_iterator, var::array_t::iterator>::type;
+            using object_iterator = typename std::conditional<std::is_const<Type>::value, var::object_t::const_iterator, var::object_t::iterator>::type;
             
             var_iterator()
             :_iter(mapbox::util::no_init())
@@ -790,7 +787,7 @@ namespace jtypes {
             if (should_discard) *should_discard = false;
             
             switch(v.type()) {
-                case vtype::array: {
+                case var::vtype::array: {
                     bool discard = false;
                     json j = json::array();
                     for (auto && vv : v) {
@@ -799,17 +796,17 @@ namespace jtypes {
                     }
                     return j;
                 }
-                case vtype::boolean:
+                case var::vtype::boolean:
                     return v.as<bool>();
-                case vtype::signed_number:
+                case var::vtype::signed_number:
                     return v.as<std::int64_t>();
-                case vtype::unsigned_number:
+                case var::vtype::unsigned_number:
                     return v.as<std::uint64_t>();
-                case vtype::real_number:
+                case var::vtype::real_number:
                     return v.as<double>();
-                case vtype::string:
+                case var::vtype::string:
                     return v.as<std::string>();
-                case vtype::object: {
+                case var::vtype::object: {
                     bool discard = false;
                     json j = json::object();
                     for (auto && k : v.keys()) {
@@ -818,12 +815,12 @@ namespace jtypes {
                     }
                     return j;
                 }
-                case vtype::function:
-                case vtype::undefined: {
+                case var::vtype::function:
+                case var::vtype::undefined: {
                     if (should_discard) *should_discard = true;
                     return json();
                 }
-                case vtype::null: {
+                case var::vtype::null: {
                     return nullptr;
                 }                    
             }
@@ -833,7 +830,7 @@ namespace jtypes {
         inline var from_json(const json &j) {
             switch (j.type()) {
                 case json::value_t::array: {
-                    var v = array_t();
+                    var v = var::array_t();
                     for (auto iter = j.begin(); iter != j.end(); ++iter) {
                         v.push_back(from_json(*iter));
                     }
@@ -850,7 +847,7 @@ namespace jtypes {
                 case json::value_t::number_unsigned:
                     return j.get<std::uint64_t>();
                 case json::value_t::object: {
-                    var v = object_t();
+                    var v = var::object_t();
                     for (auto iter = j.begin(); iter != j.end(); ++iter) {
                         v[iter.key()] = from_json(iter.value());
                     }
@@ -893,7 +890,7 @@ namespace jtypes {
     }
     
     inline var arr() {
-        return array_t();
+        return var::array_t();
     }
     
     inline var arr(std::initializer_list<var> v) {
@@ -911,7 +908,7 @@ namespace jtypes {
     }
     
     inline var obj() {
-        return object_t();
+        return var::object_t();
     }
     
     inline var obj(std::initializer_list<std::pair<const std::string, var>> v) {
@@ -925,7 +922,7 @@ namespace jtypes {
     
     template<typename Sig>
     inline var fnc(std::function<Sig> && f) {
-        return var(function_t(std::forward<std::function<Sig>>(f)));
+        return var(var::function_t(std::forward<std::function<Sig>>(f)));
     }
     
     inline std::ostream &operator<<(std::ostream &os, const var &v) {
@@ -1089,7 +1086,7 @@ namespace jtypes {
     }
     
     
-    inline vtype var::type() const {
+    inline var::vtype var::type() const {
         if      (is_undefined()) return vtype::undefined;
         else if (is_null()) return vtype::null;
         else if (is_boolean()) return vtype::boolean;
@@ -1220,7 +1217,7 @@ namespace jtypes {
     }
     
 
-    inline array_t var::keys() const {
+    inline var::array_t var::keys() const {
         array_t r;
         
         if (is_object()) {
@@ -1239,7 +1236,7 @@ namespace jtypes {
         
     }
     
-    inline array_t var::values() const {
+    inline var::array_t var::values() const {
         array_t r;
         
         if (is_object()) {
