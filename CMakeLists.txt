@@ -20,10 +20,11 @@ set(LIB_INCLUDE_DIRS
 
 set(LIB_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/inc/jtypes/jtypes.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/jtypes/jtypes_io.hpp
 )
 
 set(LIB_INSTALL_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc/jtypes/jtypes.hpp
+    ${LIB_HEADERS}
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/variant/variant.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/nlohmann-json/src/json.hpp
 )

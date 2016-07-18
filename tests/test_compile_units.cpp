@@ -11,7 +11,7 @@ of MIT license. See the LICENSE file for details.
 #include "catch.hpp"
 
 #include <jtypes/jtypes.hpp>
-
+#include <jtypes/jtypes_io.hpp>
 
 TEST_CASE("jtypes")
 {
