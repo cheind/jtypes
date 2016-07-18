@@ -340,6 +340,7 @@ namespace jtypes {
         
         template<class T>
         explicit operator T() const;
+        explicit operator bool() const;
         
         template<typename T>
         meta::if_not_is_function<T, T> as(const var &opts = undefined()) const;
@@ -828,9 +829,9 @@ namespace jtypes {
                 }
                 case vtype::null: {
                     return nullptr;
-                }
-                    
+                }                    
             }
+            throw type_error("to_json() unexpected type.");
         }
         
         inline var from_json(const json &j) {
@@ -864,6 +865,8 @@ namespace jtypes {
                 case json::value_t::discarded:
                     return var();
             }
+
+            throw type_error("from_json() unexpected type.");
         }
     }
     
@@ -1122,6 +1125,10 @@ namespace jtypes {
     template<class T>
     inline var::operator T() const {
         return as<T>();
+    }
+
+    inline var::operator bool() const {
+        return as<bool>();
     }
     
     inline const var &var::operator|(const var &default_value) const {

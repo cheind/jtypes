@@ -412,7 +412,7 @@ TEST_CASE("jtypes should be convertible to primitive types")
     // ints and floats
     
     REQUIRE(int(jtypes::var(1)) == 1);
-    REQUIRE(uint(jtypes::var(1)) == 1u);
+    REQUIRE(std::uint32_t(jtypes::var(1)) == 1u);
     REQUIRE(float(jtypes::var(1)) == 1.f);
     
 }
