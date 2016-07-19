@@ -128,5 +128,220 @@ jtype f = jtype::function<sum_sig>(std::bind(triple_sum, _1, _2, 0));
 
 ```
 
+### Copy Semantics
 
+By default all jtype copy semantics are deep-copy, expect for jtype objects pointing to callables.
 
+```c++
+
+jtype x = jtype::object{
+  {"a", jtype::array{"b", "c"}}
+};
+
+jtype y = x;
+
+y["a"] = 1; // x["a"] still is array.
+
+```
+
+### Introspection and Coercion
+
+`jtype` objects support type introspection
+
+```c++
+
+jtype x;
+x.type();             // jtype::vtype::undefined
+x.is_undefined();     // true
+
+x = 1;            
+x.type();             // jtype::vtype::signed_number;
+x.is_signed_number(); // true
+
+x = jtype::array{}; 
+x.type();             // jtype::vtype::array;
+x.is_array();         // true
+x.is_structured();    // true
+
+// similar for other types. 
+
+```
+
+`jtype` object values can be retrieved and coerced if necessary using the `as()` function
+
+```c++
+
+jtype x = 1;
+x.as<int>();          // 1
+x.as<std::string>();  // "1"
+x.as<double>();       // 1.0
+x.as<bool>();         // true
+
+x = jtype::undefined();
+x.as<bool>();        // false
+
+x = jtype::null();
+x.as<bool>();        // false
+
+if (!x) {
+  // Will be entered
+}
+
+```
+
+Similarily, casts can be used
+
+```c++
+
+jtype x = "1";    // string
+int i = (int)x;   // 1
+
+```
+
+### Queries
+
+`jtype` structured objects (array and object) support member queries.
+
+```c++
+
+jtype x = jtype::object{
+  {"a", jtype::array{"b", "c"}}
+};
+
+x["a"][0];   // jtype containing "b"
+
+```
+
+For deeply nested objects `at()` is provided.
+
+```c++
+
+jtype x = jtype::object{
+  "a", jtype::object{
+    {"b", "c"}
+  }
+};
+
+x.at("a.b"); // jtype containing "c"
+
+```
+
+### Iteration
+
+`jtype` structured objects (array and object) can be iterated in multple ways. For one `jtype` supports method `keys()` and `values`.
+
+```c++
+
+jtype x = jtype::object{
+  {"a", jtype::array{"b", "c"}},
+  {"f", jtype::null()}
+};
+
+x.keys();     // jtype::array{"a", "f"};
+x.values();   // jtype::array{jtype::array{"b", "c"}, jtype::null()}
+
+for (auto && k : x.keys()) {
+  std::cout << k.as<std::string>() << " : " << x[k].as<std::string>() << ", "; 
+} // "a" : ["b","c"], f : "null"
+
+```
+
+`keys()` for array types gives indices
+
+```c++
+
+jtype x = jtype::array{ "a", "b", "c" };
+
+x.keys();     // jtype::array{0, 1, 2};
+x.values();   // jtype::array{"a", "b", "c"};
+
+```
+
+A forward iterator is also provided for structured types.
+
+```c++
+
+jtype x = jtype::object{
+  {"a", jtype::array{"b", "c"}},
+  {"f", jtype::null()}
+};
+
+for (auto i = x.begin(); i != end(); ++i) {
+  // use x.key() to access property name (object) or index (array)
+  std::cout << x.key().as<std::string()> << " : " << i->as<std::string>();
+}
+
+```
+
+### Manipulation
+
+```c++
+
+jtype x = jtype::object{};
+
+x.size().as<size_t>(); // 0
+
+x["a"] = 3;
+x["b"] = jtype::array{};
+x["b"][0] = "hello";
+x["b"][3] = "world"; // [1], [2] created as undefined.
+
+x.size().as<size_t>(); // 2
+x["b"].size().as<size_t>(); // 4
+
+```
+
+When creating nested object hierarchies be careful to create intermediate objects explicitly or use `at()`
+
+```c++
+
+jtype x = jtype::object{};
+
+x["a"]["b"] = 3; // throws type_error. x["a"] returns undefined. [] operator for undefined throws.
+
+```
+Instead use
+
+```c++
+
+jtype x = jtype::object{};
+x["a"] = jtype::object{};
+
+x["a"]["b"] = 3; // ok
+
+```
+
+or even shorter
+
+```c++
+
+jtype x = jtype::object{};
+
+x.at("a.b") = 3; // ok
+
+```
+
+### JSON parsing
+
+`jtype` objects can be serialized in JSON format. Parsing support is provided by utilizing [nlohmann/json](https://github.com/nlohmann/json).
+
+```c++
+
+#include <jtypes/jtypes_io.hpp>
+
+// ...
+
+jtype x = jtype::object{
+  {"a", jtype::array{"b", "c"}},
+  {"f", jtype::null()}
+};
+
+// serialize
+std::string s = jtypes::to_json(x);
+
+// parse
+jtype y = jtypes::from_json(s);
+
+```
+
+Overloads of `to_json` and `from_json` for handling streams instead of strings are provided as well.
