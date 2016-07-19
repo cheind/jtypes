@@ -89,6 +89,16 @@ jtype o = jtype::object {
 
 ```
 
+Since `jtype::array` and `jtype::object` reference `std::vector<jtype>` and `std::map<jtype>` respectively, all constructors
+exposed by those objects can be invoked.
+
+```c++
+
+int data[] = {1, 2, 3};
+jtype a = jtype::array(data, data + 3);
+
+```
+
 Additionally `jtype` objects can be constructed from callables
 
 ```c++
